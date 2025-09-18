@@ -8,3 +8,8 @@ client = MongoClient("mongodb://localhost:27017/", uuidRepresentation="standard"
 db = client["Nongsan"]
 
 # Giờ bạn có db.tai_khoan, db.san_pham, db.danh_muc, db.gio_hang, db.don_hang
+taikhoan = db["taikhoan"]
+danhmuc  = db["danhmuc"]
+sanpham  = db["sanpham"]
+giohang  = db["giohang"]
+donhang  = db["donhang"]
