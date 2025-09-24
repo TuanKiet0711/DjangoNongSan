@@ -1,0 +1,131 @@
+{% extends "customer/base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Trang chủ{% endblock %}
+
+{% block banner %}
+<!-- Carousel Banner + Hero -->
+<div id="mainCarousel" class="carousel slide" data-bs-ride="carousel">
+  <div class="carousel-inner">
+    <div class="carousel-item active">
+      <img src="{{ MEDIA_URL }}banner3.jpg" class="d-block w-100" alt="Banner 1">
+      <div class="carousel-caption">
+        <h1 class="text-white">Trái Cây Sạch</h1>
+        <p class="text-white">Thực phẩm tươi ngon – An toàn cho mọi gia đình</p>
+        <a href="#" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
+      </div>
+    </div>
+    <div class="carousel-item">
+      <img src="{{ MEDIA_URL }}banner2.jpg" class="d-block w-100" alt="Banner 2">
+      <div class="carousel-caption">
+        <h1 class="text-white">Trái Cây Sạch</h1>
+        <p class="text-white">Thực phẩm tươi ngon – An toàn cho mọi gia đình</p>
+        <a href="#" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
+      </div>
+    </div>
+    <div class="carousel-item">
+      <img src="{{ MEDIA_URL }}banner1.png" class="d-block w-100" alt="Banner 3">
+      <div class="carousel-caption">
+        <h1 class="text-white">Trái Cây Sạch</h1>
+        <p class="text-white">Thực phẩm tươi ngon – An toàn cho mọi gia đình</p>
+        <a href="#" class="btn btn-lg btn-success mt-3">Khám phá ngay</a>
+      </div>
+    </div>
+  </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#mainCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#mainCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon"></span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- USP -->
+<style>
+  /* Nền xanh nhạt */
+  .bg-soft-green {
+    background: linear-gradient(135deg, #e6f4ea 0%, #f6fff7 100%);
+  }
+
+  /* Kéo nền ra full màn hình */
+  .full-bleed {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+  }
+
+  /* Card USP */
+  .usp-card {
+    background-color: #ffffff;
+    border-radius: 1rem;
+    padding: 2rem 1rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .usp-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+  }
+
+  /* Icon USP */
+  .usp-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: #2e7d32; /* xanh lá */
+  }
+
+  /* Tiêu đề */
+  .section-title {
+    font-weight: 700;
+    color: #2e7d32;
+    margin-bottom: 2rem;
+  }
+
+  /* Tránh thanh cuộn ngang */
+  body {
+    overflow-x: hidden;
+  }
+</style>
+<section class="py-5 bg-soft-green full-bleed">
+  <div class="container px-5">
+    <h2 class="section-title text-center">Tại sao chọn chúng tôi?</h2>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="usp-card text-center">
+          <div class="usp-icon"><i class="bi bi-award"></i></div>
+          <h4 class="mb-3">Tươi – Sạch</h4>
+          <p class="text-muted">
+            Chọn lọc từ nông trại uy tín, rõ nguồn gốc, đảm bảo chất lượng.
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="usp-card text-center">
+          <div class="usp-icon"><i class="bi bi-truck"></i></div>
+          <h4 class="mb-3">Giao nhanh</h4>
+          <p class="text-muted">
+            Đặt online, giao tận nơi trong ngày. Tươi ngon khi đến tay bạn.
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="usp-card text-center">
+          <div class="usp-icon"><i class="bi bi-piggy-bank"></i></div>
+          <h4 class="mb-3">Giá hợp lý</h4>
+          <p class="text-muted">
+            Ưu đãi thường xuyên, giá cả phải chăng cho mọi gia đình.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+{% endblock %}

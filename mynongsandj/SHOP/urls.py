@@ -2,9 +2,16 @@
 from django.urls import path
 from .views import danh_muc_view as dm
 from .views import taikhoan_view as v
+from .views import home
+from .views import sanpham as sanpham
+
 app_name = "shop"  # optional, để namespace
 
 urlpatterns = [
+    path("", home.home, name="home"),
+    path("sanpham/", sanpham.sanpham_list, name="sanpham_list"),
+    path("sanpham/category/<str:cat_id>/", sanpham.product_by_category, name="product_by_category"),
+    path("sanpham/add/<str:sp_id>/", sanpham.add_to_cart, name="add_to_cart"),
     # Danh mục (có dấu / ở cuối như bạn yêu cầu)
     path("danh-muc/", dm.list_danh_muc, name="danh_muc_list"),
     path("danh-muc/create/", dm.create_danh_muc, name="danh_muc_create"),
