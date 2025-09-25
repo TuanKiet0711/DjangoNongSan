@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('SHOP.urls')),
     path("api/", include("SHOP.urls")),
+    path("admin-panel/", include("SHOP.urls")),
 ]
 
 # Thêm dòng này để load ảnh trong thư mục media

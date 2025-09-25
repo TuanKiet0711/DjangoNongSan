@@ -4,7 +4,7 @@ from .views import danh_muc_view as dm
 from .views import taikhoan_view as v
 from .views import home
 from .views import sanpham as sanpham
-
+from .views import home, sanpham, admin_view as av   # file shop/views/admin_views.py
 app_name = "shop"  # optional, để namespace
 
 urlpatterns = [
@@ -27,4 +27,9 @@ urlpatterns = [
     path("api/auth/login",    v.auth_login),
     path("api/auth/logout",   v.auth_logout),
     path("api/auth/me",       v.auth_me),
+    
+     # ====== Admin Panel (HTML) ======
+    path("admin-panel/", av.dashboard, name="admin_dashboard"),
+    # path("admin-panel/categories/", av.categories_list, name="admin_categories"),
+    # path("admin-panel/products/", av.products_list, name="admin_products"),
 ]
