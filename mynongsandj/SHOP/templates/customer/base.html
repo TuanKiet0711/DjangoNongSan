@@ -15,7 +15,6 @@
   </style>
 </head>
 <body>
-  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #198754;">
     <div class="container">
       <a class="navbar-brand text-success fw-bold" href="{% url 'shop:home' %}">Nông Sản Sạch</a>
@@ -29,7 +28,9 @@
           <li class="nav-item"><a class="nav-link" href="{% url 'shop:sanpham_list' %}">Sản phẩm</a></li>
           {% if request.session.user_id and request.session.user_role|lower == 'admin' %}
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'shop:admin_dashboard' %}"><i class="bi bi-speedometer2"></i> Admin Panel</a>
+              <a class="nav-link" href="{% url 'shop:admin_dashboard' %}">
+                <i class="bi bi-speedometer2"></i> Admin Panel
+              </a>
             </li>
           {% endif %}
         </ul>
@@ -39,27 +40,23 @@
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                 <i class="bi bi-person-circle"></i>
-                {{ request.session.user_name|default:"Tài khoản" }}
+                {{ request.session.user_name|default:request.session.user_email|default:"Tài khoản" }}
               </a>
               <ul class="dropdown-menu dropdown-menu-end">
                 <li><a class="dropdown-item" href="{% url 'shop:sanpham_list' %}">Đơn hàng của tôi</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a id="btnLogout" class="dropdown-item" href="#">Đăng xuất</a></li>
+                <li><a class="dropdown-item" href="{% url 'shop:auth_logout_page' %}">Đăng xuất</a></li>
               </ul>
             </li>
           {% else %}
-            <li class="nav-item"><a class="nav-link" href="#">Đăng nhập</a></li>
-            <li class="nav-item"><a class="nav-link" href="#">Đăng ký</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'shop:auth_login_page' %}">Đăng nhập</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'shop:auth_register_page' %}">Đăng ký</a></li>
           {% endif %}
 
-          <!-- Giỏ hàng có badge số lượng -->
           <li class="nav-item">
             <a class="nav-link position-relative" href="#">
               <i class="bi bi-bag"></i> Giỏ hàng
-              <span id="cartCountBadge"
-                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">
-                0
-              </span>
+              <span id="cartCountBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
             </a>
           </li>
         </ul>
@@ -70,56 +67,26 @@
   {% block banner %}{% endblock %}
 
   <main class="container my-5">
+    {# FLASH MESSAGES #}
+    {% if messages %}
+      <div class="mb-3">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Footer -->
   <footer class="text-center py-3 bg-success text-white mt-auto">
     <p>&copy; 2025 Nông Sản Sạch. All rights reserved.</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <script>
-    // Đăng xuất
-    const btn = document.getElementById('btnLogout');
-    if (btn) {
-      btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await fetch('/api/auth/logout', { method: 'POST' });
-        window.location.href = '{% url "shop:home" %}';
-      });
-    }
-
-    // Badge số lượng giỏ hàng
-    document.addEventListener('DOMContentLoaded', () => {
-      const badge = document.getElementById('cartCountBadge');
-
-      async function loadCartCount() {
-        try {
-          const res = await fetch('/api/cart'); // dùng session/user_id hiện tại
-          if (!res.ok) { badge.classList.add('d-none'); return; }
-          const data = await res.json();
-          const count = data.count || (data.items ? data.items.length : 0);
-          if (count > 0) {
-            badge.textContent = count;
-            badge.classList.remove('d-none');
-          } else {
-            badge.classList.add('d-none');
-          }
-        } catch (e) {
-          badge.classList.add('d-none');
-        }
-      }
-
-      // Expose để page con gọi sau khi thêm vào giỏ
-      window.updateCartBadge = loadCartCount;
-
-      // Load lần đầu
-      loadCartCount();
-    });
-  </script>
-
   {% block extra_js %}{% endblock %}
 </body>
 </html>

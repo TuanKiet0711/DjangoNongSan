@@ -1,0 +1,66 @@
+{% extends "shop/auth/base_auth.html" %}
+{% block title %}Đăng nhập · Admin{% endblock %}
+
+{% block content %}
+<h4 class="fw-bold mb-1">Đăng nhập</h4>
+<p class="text-muted mb-3">Nhập email và mật khẩu để vào hệ thống.</p>
+
+<div id="msg" class="alert alert-danger d-none"></div>
+
+<form id="formLogin" class="vstack gap-2">
+  <div>
+    <label class="form-label">Email</label>
+    <input id="email" type="email" class="form-control" placeholder="you@example.com" required>
+  </div>
+  <div>
+    <label class="form-label">Mật khẩu</label>
+    <input id="password" type="password" class="form-control" placeholder="••••••••" required>
+  </div>
+  <button class="btn btn-brand w-100 mt-2" type="submit">
+    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+  </button>
+</form>
+
+<div class="text-center mt-3">
+  <span class="text-muted">Chưa có tài khoản?</span>
+  <a href="{% url 'shop:auth_register_page' %}">Đăng ký</a>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const $ = (s)=>document.querySelector(s);
+const msg = $("#msg");
+
+$("#formLogin").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  msg.classList.add("d-none");
+  const email = $("#email").value.trim().toLowerCase();
+  const matKhau = $("#password").value.trim();
+
+  try{
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({email, matKhau})
+    });
+    const data = await res.json().catch(()=> ({}));
+
+    if(!res.ok){
+      msg.textContent = data?.error || "Đăng nhập thất bại";
+      msg.classList.remove("d-none");
+      return;
+    }
+
+    // Thành công: tuỳ vai trò điều hướng
+    const role = (data?.user?.vaiTro || "").toLowerCase();
+    if (role === "admin") window.location.href = "/admin-panel/";
+    else window.location.href = "/";
+  }catch(err){
+    msg.textContent = "Không thể kết nối máy chủ.";
+    msg.classList.remove("d-none");
+  }
+});
+</script>
+{% endblock %}

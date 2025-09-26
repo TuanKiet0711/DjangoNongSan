@@ -1,0 +1,124 @@
+{% extends "shop/auth/base_auth.html" %}
+{% block title %}Đăng ký{% endblock %}
+
+{% block content %}
+<h4 class="fw-bold mb-1">Đăng ký tài khoản</h4>
+<p class="text-muted mb-3">Tạo tài khoản mới để sử dụng hệ thống.</p>
+
+<div id="msg" class="alert d-none"></div>
+
+<form id="formRegister" class="vstack gap-2" novalidate>
+  <div>
+    <label class="form-label">Họ tên</label>
+    <input id="hoTen" class="form-control" placeholder="Nguyễn Văn A" required>
+  </div>
+  <div>
+    <label class="form-label">Email</label>
+    <input id="email" type="email" class="form-control" placeholder="you@example.com" required>
+  </div>
+  <div>
+    <label class="form-label">SĐT (tuỳ chọn)</label>
+    <input id="sdt" class="form-control" placeholder="09xxxxxxxx">
+  </div>
+
+  <div class="row g-2">
+    <div class="col-12 col-md-6">
+      <label class="form-label">Mật khẩu</label>
+      <input id="password" type="password" class="form-control"  required>
+    </div>
+    <div class="col-12 col-md-6">
+      <label class="form-label">Nhập lại mật khẩu</label>
+      <input id="password2" type="password" class="form-control"  required>
+      <div id="pwHelp" class="form-text text-danger d-none">Mật khẩu nhập lại không khớp.</div>
+    </div>
+  </div>
+
+  <button class="btn btn-brand w-100 mt-2" type="submit">
+    <i class="bi bi-person-plus me-1"></i> Đăng ký
+  </button>
+</form>
+
+<div class="text-center mt-3">
+  <span class="text-muted">Đã có tài khoản?</span>
+  <a href="{% url 'shop:auth_login_page' %}">Đăng nhập</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const $ = (s)=>document.querySelector(s);
+const msg = $("#msg");
+const pw1 = $("#password");
+const pw2 = $("#password2");
+const pwHelp = $("#pwHelp");
+
+function showMsg(text, type){ // type: 'success' | 'danger'
+  msg.className = "alert alert-" + type;
+  msg.textContent = text;
+}
+
+function clearMsg(){
+  msg.className = "alert d-none";
+  msg.textContent = "";
+}
+
+// Chỉ hiển thị lỗi khi blur hoặc khi submit
+function validatePasswords(showNow=false){
+  const ok = pw1.value.trim() === pw2.value.trim();
+  if(!ok && showNow){
+    pwHelp.classList.remove("d-none");
+    pw2.classList.add("is-invalid");
+  }else{
+    pwHelp.classList.add("d-none");
+    pw2.classList.remove("is-invalid");
+  }
+  return ok;
+}
+
+// Chỉ kiểm tra khi blur khỏi ô nhập lại mật khẩu
+pw2.addEventListener("blur", ()=> validatePasswords(true));
+
+$("#formRegister").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  clearMsg();
+
+  // Kiểm tra khớp mật khẩu khi submit
+  if(!validatePasswords(true)){
+    showMsg("Mật khẩu nhập lại không khớp.", "danger");
+    return;
+  }
+
+  // (Tuỳ chọn) kiểm tra độ dài tối thiểu
+  if(pw1.value.trim().length < 6){
+    showMsg("Mật khẩu phải từ 6 ký tự trở lên.", "danger");
+    return;
+  }
+
+  const body = {
+    hoTen:  $("#hoTen").value.trim(),
+    email:  $("#email").value.trim().toLowerCase(),
+    sdt:    $("#sdt").value.trim(),
+    matKhau: pw1.value.trim()
+  };
+
+  try{
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(()=> ({}));
+
+    if(!res.ok){
+      showMsg(data?.error || "Đăng ký thất bại", "danger");
+      return;
+    }
+
+    showMsg("Tạo tài khoản thành công!", "success");
+    setTimeout(()=> window.location.href = "/", 700);
+  }catch(err){
+    showMsg("Không thể kết nối máy chủ.", "danger");
+  }
+});
+</script>
+{% endblock %}

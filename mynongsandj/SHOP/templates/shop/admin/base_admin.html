@@ -1,0 +1,152 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Admin Nông Sản Sạch{% endblock %}</title>
+
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    :root{
+      --brand:#2e7d32;         /* xanh lá chính */
+      --brand-2:#1e5f22;       /* xanh lá tối */
+      --bg-soft:#f5fbf6;       /* nền dịu */
+      --card-radius:14px;
+      --shadow-sm:0 4px 14px rgba(0,0,0,.06);
+      --shadow-lg:0 16px 40px rgba(0,0,0,.1);
+    }
+    html,body{height:100%}
+    body{background:linear-gradient(180deg,#fff 0,#fff 40%, var(--bg-soft) 40%, var(--bg-soft) 100%);}
+
+    /* Layout */
+    .admin-shell{display:flex; min-height:100vh; width:100%;}
+    .admin-sidebar{
+      width:280px; background:linear-gradient(180deg,var(--brand) 0,var(--brand-2) 100%);
+      color:#fff; padding:22px 18px; position:sticky; top:0; height:100vh; overflow-y:auto;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+    .admin-brand{
+      display:flex; align-items:center; gap:10px; font-weight:800; font-size:22px; margin-bottom:18px;
+    }
+    .admin-brand i{font-size:26px}
+    .admin-search input{
+      background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.25); color:#fff;
+    }
+    .admin-search input::placeholder{color:#eaf6ec}
+    .admin-menu .btn{
+      width:100%; text-align:left; color:#eaffea; background:transparent; border:none;
+      padding:10px 12px; border-radius:12px; margin-bottom:6px; font-weight:600;
+      display:flex; align-items:center; gap:10px;
+    }
+    .admin-menu .btn:hover{background:rgba(255,255,255,.14)}
+    .admin-menu .btn.active{background:#fff; color:var(--brand)}
+    .admin-main{flex:1; min-width:0;}
+
+    /* Top bar */
+    .admin-top{display:flex; align-items:center; justify-content:space-between; padding:20px 28px}
+    .page-title{font-weight:800; font-size:32px; margin:0}
+    .muted-pill{font-size:12px; color:#2e7d32; background:#e9f6eb; border-radius:999px; padding:6px 12px}
+
+    /* Cards */
+    .card{
+      border:0; border-radius:var(--card-radius); box-shadow:var(--shadow-sm); background:#fff;
+    }
+    .card-hover{transition:transform .18s ease, box-shadow .18s ease}
+    .card-hover:hover{transform:translateY(-2px); box-shadow:var(--shadow-lg)}
+    .btn-soft{
+      border-radius:12px; font-weight:600;
+      border:1px solid rgba(0,0,0,.08); background:#fff;
+    }
+    .btn-soft:hover{background:#f3f6f4}
+    .badge-soft{background:#eef7f0; color:#2e7d32}
+
+    /* Footer hint */
+    .footer-hint{color:#759f79; font-size:12px}
+
+    /* Responsive */
+    @media (max-width: 991.98px){
+      .admin-shell{flex-direction:column}
+      .admin-sidebar{height:auto; width:100%; position:relative; border-bottom:1px solid rgba(255,255,255,.2)}
+      .admin-top{padding:16px}
+    }
+    /* ==== compact admin cards & buttons ==== */
+.card-compact .card-body{padding:14px 16px;}
+.card-compact h6,.card-compact h5{font-size:1rem; font-weight:700;}
+.card-compact p{margin-bottom:.5rem; font-size:.9rem;}
+.card-compact .btn{padding:.35rem .6rem; font-size:.9rem; border-radius:10px;}
+
+.tile{border-radius:14px; box-shadow:var(--shadow-sm);}
+.tile .display-6{font-size:2rem;}          /* icon nhỏ lại */
+.tile .fs-4{font-size:1.25rem;}            /* số liệu gọn hơn */
+
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="admin-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-brand">
+      <i class="bi bi-cup-hot"></i>
+      <span>Admin Nông Sản</span>
+    </div>
+    <div class="admin-search mb-3">
+      <input class="form-control form-control-sm" placeholder="Tìm nhanh…">
+    </div>
+    <div class="admin-menu">
+      <a class="btn {% if request.resolver_match.url_name in 'admin_dashboard admin_dashboard2' %}active{% endif %}" href="#">
+        <i class="bi bi-speedometer2"></i><span>Bảng điều khiển</span>
+      </a>
+      <a class="btn" href="#"><i class="bi bi-basket3"></i><span>Sản phẩm</span></a>
+      <a class="btn" href="#"><i class="bi bi-columns-gap"></i><span>Danh mục</span></a>
+      <a class="btn" href="#"><i class="bi bi-receipt"></i><span>Đơn hàng</span></a>
+      <a class="btn" href="#"><i class="bi bi-people"></i><span>Tài khoản</span></a>
+
+    
+      <hr class="border-light my-3">
+      <a class="btn" href="{% url 'shop:home' %}"><i class="bi bi-house"></i><span>Về trang khách</span></a>
+    </div>
+
+    {% block sidebar_extra %}{% endblock %}
+   
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+    <div class="admin-top">
+      <div>
+        {% block header_left %}
+          <h1 class="page-title">{% block page_title %}Bảng điều khiển{% endblock %}</h1>
+          <span class="muted-pill">Hệ thống hoạt động ổn định</span>
+        {% endblock %}
+      </div>
+     
+    </div>
+
+    {% if messages %}
+      <div class="container">
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="container pb-5">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

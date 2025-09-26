@@ -1,14 +1,14 @@
+# SHOP/views/admin_view.py
 from django.shortcuts import render
-# from django.contrib.admin.views.decorators import staff_member_required  # ❌ bỏ
+from math import ceil
+from bson import ObjectId
+from .admin_required import admin_required
 from ..database import (
     sanpham as san_pham,
     danhmuc as danh_muc,
     donhang as don_hang,
     taikhoan as tai_khoan
 )
-from math import ceil
-from bson import ObjectId
-from .admin_required import admin_required  # ✅ thêm
 
 PAGE_SIZE = 6
 
@@ -22,9 +22,8 @@ def dashboard(request):
         "total_accounts": tai_khoan.count_documents({}),
     }
     return render(request, "shop/admin/dashboard.html", ctx)
+# # =================== CATEGORIES =================== #
 
-# =================== CATEGORIES =================== #
-# @admin_required
 # def categories_list(request):
 #     q = (request.GET.get("q") or "").strip()
 #     try:
@@ -38,10 +37,9 @@ def dashboard(request):
 
 #     total = danh_muc.count_documents(filter_)
 #     total_pages = max(1, ceil(total / PAGE_SIZE))
-#     if page > total_pages:
-#         page = total_pages
-
+#     page = min(page, total_pages)
 #     skip = (page - 1) * PAGE_SIZE
+
 #     cursor = (
 #         danh_muc.find(filter_, {"ten_danh_muc": 1})
 #         .sort("ten_danh_muc", 1)
@@ -53,39 +51,20 @@ def dashboard(request):
 #         for dm in cursor
 #     ]
 
-#     placeholders = max(0, PAGE_SIZE - len(items))
-#     has_prev = page > 1
-#     has_next = page < total_pages
-#     page_numbers = list(range(1, total_pages + 1))
-
 #     ctx = {
 #         "items": items,
 #         "q": q,
 #         "page": page,
-#         "page_size": PAGE_SIZE,
-#         "total": total,
 #         "total_pages": total_pages,
-#         "has_prev": has_prev,
-#         "has_next": has_next,
-#         "placeholders": range(placeholders),
-#         "page_numbers": page_numbers,
+#         "total": total,
+#         "has_prev": page > 1,
+#         "has_next": page < total_pages,
+#         "page_numbers": list(range(1, total_pages + 1)),
 #     }
 #     return render(request, "shop/admin/categories_list.html", ctx)
 
-# @admin_required
-# def category_create(request):
-#     return render(request, "shop/admin/category_create.html")
-
-# @admin_required
-# def category_edit(request, id: str):
-#     return render(request, "shop/admin/category_edit.html", {"cat_id": id})
-
-# @admin_required
-# def category_delete(request, id: str):
-#     return render(request, "shop/admin/category_delete.html", {"cat_id": id})
-
 # # =================== PRODUCTS =================== #
-# @admin_required
+
 # def products_list(request):
 #     q = (request.GET.get("q") or "").strip()
 #     try:
@@ -99,10 +78,9 @@ def dashboard(request):
 
 #     total = san_pham.count_documents(filter_)
 #     total_pages = max(1, ceil(total / PAGE_SIZE))
-#     if page > total_pages:
-#         page = total_pages
-
+#     page = min(page, total_pages)
 #     skip = (page - 1) * PAGE_SIZE
+
 #     cursor = (
 #         san_pham.find(filter_, {"ten_san_pham": 1, "gia": 1, "danh_muc_id": 1, "hinh_anh": 1})
 #         .sort("ten_san_pham", 1)
@@ -129,68 +107,14 @@ def dashboard(request):
 #             "danh_muc": cat_name,
 #         })
 
-#     placeholders = max(0, PAGE_SIZE - len(items))
-#     has_prev = page > 1
-#     has_next = page < total_pages
-#     page_numbers = list(range(1, total_pages + 1))
-
 #     ctx = {
 #         "items": items,
 #         "q": q,
 #         "page": page,
-#         "page_size": PAGE_SIZE,
-#         "total": total,
 #         "total_pages": total_pages,
-#         "has_prev": has_prev,
-#         "has_next": has_next,
-#         "placeholders": range(placeholders),
-#         "page_numbers": page_numbers,
+#         "total": total,
+#         "has_prev": page > 1,
+#         "has_next": page < total_pages,
+#         "page_numbers": list(range(1, total_pages + 1)),
 #     }
 #     return render(request, "shop/admin/products_list.html", ctx)
-
-# @admin_required
-# def product_create(request):
-#     cursor = danh_muc.find({}, {"ten_danh_muc": 1})
-#     categories = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc")} for dm in cursor]
-#     ctx = {"categories": categories}
-#     return render(request, "shop/admin/products_create.html", ctx)
-
-# @admin_required
-# def product_edit(request, id: str):
-#     cursor = danh_muc.find({}, {"ten_danh_muc": 1})
-#     categories = [{"id": str(dm["_id"]), "ten": dm.get("ten_danh_muc")} for dm in cursor]
-#     ctx = {"product_id": id, "categories": categories}
-#     return render(request, "shop/admin/products_edit.html", ctx)
-
-# @admin_required
-# def product_delete(request, id: str):
-#     return render(request, "shop/admin/products_delete.html", {"product_id": id})
-
-# @admin_required
-# def accounts_list_page(request):
-#     q = (request.GET.get("q") or "").strip()
-#     vai_tro = (request.GET.get("vai_tro") or "").strip()
-#     page = int(request.GET.get("page", 1) or 1)
-#     page_size = int(request.GET.get("page_size", 10) or 10)
-
-#     return render(request, "shop/admin/accounts_list.html", {
-#         "q": q,
-#         "vai_tro": vai_tro,
-#         "page": page,
-#         "page_size": page_size,
-#         "page_sizes": [10, 20, 50, 100],   # <- thêm dòng này
-#     })
-# @admin_required
-# def account_create(request):
-#     # Chỉ render form, submit gọi API /api/accounts/create/
-#     return render(request, "shop/admin/account_create.html")
-
-# @admin_required
-# def account_edit(request, id: str):
-#     # Chỉ render form, submit gọi API PUT /api/accounts/<id>/
-#     return render(request, "shop/admin/account_edit.html", {"account_id": id})
-
-# @admin_required
-# def account_delete(request, id: str):
-#     # Xác nhận xóa, submit gọi API DELETE /api/accounts/<id>/
-#     return render(request, "shop/admin/account_delete.html", {"account_id": id})
