@@ -1,3 +1,4 @@
+from urllib import request
 from django.shortcuts import render, redirect
 from bson import ObjectId
 from ..database import sanpham, danhmuc, giohang
@@ -39,7 +40,51 @@ def sanpham_list(request):
         "products": products
     })
 
+def product_detail(request, sp_id):
+    """Trang chi tiết sản phẩm"""
+    try:
+        oid = ObjectId(sp_id)
+    except Exception:
+        return render(request, "customer/details.html", {"product": None, "error": "Mã sản phẩm không hợp lệ"})
 
+    sp = sanpham.find_one({"_id": oid})
+    if not sp:
+        return render(request, "customer/details.html", {"product": None, "error": "Không tìm thấy sản phẩm"})
+
+    # Chuẩn hoá dữ liệu
+    prod = {
+        "id": str(sp["_id"]),
+        "ten": sp.get("tenSanPham") or "Sản phẩm",
+        "mo_ta": sp.get("moTa") or "",
+        "gia": sp.get("gia", 0),
+        "hinh_anh": sp.get("hinhAnh") if isinstance(sp.get("hinhAnh"), list) else ([sp.get("hinhAnh")] if sp.get("hinhAnh") else []),
+    }
+
+    # Tên danh mục
+    cat_name = "Khác"
+    cat_id = sp.get("danhMucId")
+    if isinstance(cat_id, ObjectId):
+        cat = danhmuc.find_one({"_id": cat_id})
+        if cat:
+            cat_name = cat.get("tenDanhMuc") or "Khác"
+    prod["danh_muc_ten"] = cat_name
+
+    # Sản phẩm liên quan (cùng danh mục, khác id này), tối đa 6
+    related = []
+    q = {"danhMucId": cat_id} if isinstance(cat_id, ObjectId) else {}
+    for rel in sanpham.find(q).limit(12):
+        if rel["_id"] == oid:
+            continue
+        related.append({
+            "id": str(rel["_id"]),
+            "ten": rel.get("tenSanPham") or "Sản phẩm",
+            "gia": rel.get("gia", 0),
+            "hinh_anh": (rel.get("hinhAnh") if isinstance(rel.get("hinhAnh"), list) else [rel.get("hinhAnh")] if rel.get("hinhAnh") else []),
+        })
+        if len(related) >= 6:
+            break
+
+    return render(request, "customer/chitietsanpham.html", {"product": prod, "related": related})
 def product_by_category(request, cat_id):
     try:
         oid = ObjectId(cat_id)

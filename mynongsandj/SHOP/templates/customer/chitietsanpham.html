@@ -1,0 +1,145 @@
+{% extends "customer/base.html" %}
+{% load humanize %}
+{% block title %}{% if product %}{{ product.ten }}{% else %}Chi tiết sản phẩm{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+  .gallery-main{border:1px solid #eee; border-radius:12px; overflow:hidden;}
+  .gallery-main img{width:100%; height:360px; object-fit:cover;}
+  .thumbs{gap:8px;}
+  .thumbs img{width:80px; height:60px; object-fit:cover; border:2px solid transparent; border-radius:8px; cursor:pointer;}
+  .thumbs img.active{border-color:#2e7d32;}
+  .price-lg{font-size:1.6rem; font-weight:800; color:#1e5f22;}
+  .btn-buy{background:linear-gradient(180deg,#2e7d32 0,#1e5f22 100%); color:#fff; border:none;}
+  .btn-back{border:1px solid #cfd8dc;color:#546e7a;border-radius:999px}
+  .btn-back:hover{background:#eceff1;color:#37474f}
+  .specs dt{width:120px; color:#6c757d;}
+  .specs dd{margin-bottom:.5rem;}
+</style>
+
+<div class="container py-4">
+  {% if error %}
+    <div class="alert alert-warning">{{ error }}</div>
+  {% elif not product %}
+    <div class="alert alert-warning">Không có dữ liệu sản phẩm.</div>
+  {% else %}
+
+  <div class="row g-4">
+    <!-- Gallery -->
+    <div class="col-12 col-md-6">
+      <div class="gallery-main mb-2">
+        <img id="mainImg" src="{{ MEDIA_URL }}{{ product.hinh_anh.0|default_if_none:'' }}" alt="{{ product.ten }}">
+      </div>
+      <div class="d-flex thumbs flex-wrap">
+        {% for img in product.hinh_anh %}
+          <img src="{{ MEDIA_URL }}{{ img }}" alt="thumb {{ forloop.counter }}"
+               class="{% if forloop.first %}active{% endif %}" data-src="{{ MEDIA_URL }}{{ img }}">
+        {% empty %}
+          <div class="text-muted small">Chưa có hình ảnh</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="col-12 col-md-6">
+      <h3 class="mb-2">{{ product.ten }}</h3>
+      <div class="mb-2">
+        <span class="badge text-bg-success-subtle text-success-emphasis">{{ product.danh_muc_ten }}</span>
+      </div>
+      <div>
+        <h6 class="fw-semibold">Mô tả</h6>
+        <p class="mb-0">{{ product.mo_ta|linebreaksbr|default:"(Chưa có mô tả)" }}</p>
+      </div>
+      <div class="price-lg mb-3">{{ product.gia|intcomma }} VNĐ</div>
+
+      <div class="d-flex flex-column gap-2 mb-4">
+        <a class="btn btn-buy w-100" href="{% url 'shop:checkout' %}?buy_now={{ product.id }}">
+          <i class="bi bi-bag-check me-1"></i> Mua ngay
+        </a>
+        <button class="btn btn-outline-success w-100" id="btnAddDetail" data-id="{{ product.id }}">
+          <i class="bi bi-cart-plus me-1"></i> Thêm vào giỏ
+        </button>
+        <!-- Nút quay lại danh sách sản phẩm -->
+        <a href="{% url 'shop:sanpham_list' %}" class="btn btn-back w-100">
+          <i class="bi bi-arrow-left"></i> Quay lại danh sách sản phẩm
+        </a>
+      </div>
+      <hr>
+    </div>
+  </div>
+
+  {% if related %}
+  <hr class="my-4">
+  <h5 class="mb-3">Sản phẩm liên quan</h5>
+  <div class="row g-3">
+    {% for r in related %}
+    <div class="col-6 col-md-3 col-lg-2">
+      <div class="card h-100">
+        <a href="{% url 'shop:product_detail' r.id %}">
+          <img src="{{ MEDIA_URL }}{{ r.hinh_anh.0|default_if_none:'' }}" class="card-img-top" style="height:120px;object-fit:cover;">
+        </a>
+        <div class="card-body p-2">
+          <div class="small text-truncate" title="{{ r.ten }}">{{ r.ten }}</div>
+          <div class="fw-semibold small">{{ r.gia|intcomma }} đ</div>
+          <div class="d-grid mt-2">
+            <a class="btn btn-sm btn-outline-success" href="{% url 'shop:product_detail' r.id %}">Xem</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% endif %}
+</div>
+
+<!-- Toasts -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+  <div id="cartToastSuccess" class="toast text-bg-success border-0">
+    <div class="d-flex">
+      <div class="toast-body">✅ Thêm vào giỏ hàng thành công!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+  <div id="cartToastError" class="toast text-bg-danger border-0">
+    <div class="d-flex">
+      <div class="toast-body">❌ Lỗi khi thêm vào giỏ!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // gallery
+  const main = document.getElementById('mainImg');
+  document.querySelectorAll('.thumbs img').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.thumbs img').forEach(i=>i.classList.remove('active'));
+      t.classList.add('active');
+      if(main) main.src = t.dataset.src;
+    });
+  });
+
+  // add to cart
+  const toastSuccess = new bootstrap.Toast(document.getElementById('cartToastSuccess'), { delay: 2000 });
+  const toastError = new bootstrap.Toast(document.getElementById('cartToastError'), { delay: 2000 });
+  const btn = document.getElementById('btnAddDetail');
+  if(btn){
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      try{
+        const res = await fetch("{% url 'shop:api_add_to_cart' sp_id='SPID' %}".replace('SPID', id), { method:'POST' });
+        const data = await res.json().catch(()=>({}));
+        if(res.ok && data.success){ toastSuccess.show(); if(window.updateCartBadge) window.updateCartBadge(data.count, data.total); }
+        else if(res.status === 401){ window.location.href = "{% url 'shop:auth_login_page' %}"; }
+        else{ toastError.show(); }
+      }catch(e){ toastError.show(); }
+    });
+  }
+});
+</script>
+{% endblock %}

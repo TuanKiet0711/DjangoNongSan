@@ -2,44 +2,83 @@
 {% load static %}
 {% load humanize %}
 
-{% block title %}Trang sản phẩm{% endblock %}
+{% block title %}Danh sách sản phẩm{% endblock %}
 
 {% block content %}
+<style>
+  .product-card{border:1px solid #eee;border-radius:1rem;box-shadow:0 4px 12px rgba(0,0,0,.05);overflow:hidden;background:#fff;transition:.2s}
+  .product-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+  .product-img{aspect-ratio:1/1;object-fit:cover;height:280px;} /* cao lên */
+
+  .price-tag{color:#ff9800;font-weight:700}
+
+  /* Mua ngay (CAM) */
+  .btn-buy-now{
+    --c:#ff9800;
+    background:#fff;border:2px solid var(--c);color:var(--c);font-weight:700;border-radius:12px;
+    box-shadow:0 6px 16px rgba(255,152,0,.15);
+  }
+  .btn-buy-now:hover{background:var(--c);color:#fff;transform:translateY(-1px)}
+
+  /* Thêm vào giỏ (XANH LÁ) */
+  .btn-add-cart{
+    --g:#2e7d32;
+    background:linear-gradient(180deg,#f3fbf4,#e9f6eb);
+    border:2px dashed var(--g); color:var(--g); font-weight:600; border-radius:12px;
+    box-shadow:0 6px 16px rgba(46,125,50,.12);
+  }
+  .btn-add-cart:hover{background:#daf0dd;color:#1e5f22;transform:translateY(-1px)}
+
+  /* Xem chi tiết (XANH DƯƠNG) */
+  .btn-view-detail{
+    --b:#3b78ff;
+    background:#f1f5ff;border:2px solid var(--b);color:var(--b);font-weight:600;border-radius:12px;
+    box-shadow:0 6px 16px rgba(59,120,255,.14);
+  }
+  .btn-view-detail:hover{background:var(--b);color:#fff;transform:translateY(-1px)}
+</style>
+
 <section class="py-5">
   <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="h3 mb-0">Sản phẩm nổi bật</h2>
-      <a href="#" class="btn btn-outline-success">Xem tất cả <i class="bi bi-arrow-right ms-1"></i></a>
+    <div class="mb-4">
+      <h2 class="h3 mb-0">Danh sách sản phẩm</h2>  <!-- Đổi tiêu đề -->
     </div>
 
     <div class="row g-4">
       {% for sp in hot_products %}
       <div class="col-6 col-md-3">
         <div class="product-card card h-100">
-          <img src="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}" class="product-img card-img-top" alt="{{ sp.ten }}">
+          <a href="{% url 'shop:product_detail' sp.id %}">
+            <img src="{{ MEDIA_URL }}{{ sp.hinh_anh.0 }}" class="product-img card-img-top" alt="{{ sp.ten }}">
+          </a>
           <div class="card-body d-flex flex-column">
             <span class="badge bg-success-subtle text-success-emphasis mb-2">{{ sp.danh_muc_ten }}</span>
 
-            <h6 class="card-title mb-1" title="{{ sp.ten }}">{{ sp.ten }}</h6>
+            <h6 class="card-title mb-1 text-truncate" title="{{ sp.ten }}">
+              <a class="text-decoration-none text-dark" href="{% url 'shop:product_detail' sp.id %}">{{ sp.ten }}</a>
+            </h6>
 
             <p class="text-muted small mb-2">
               {{ sp.mo_ta|default_if_none:""|truncatechars:80 }}
             </p>
 
-            <div class="price-tag fw-semibold mb-2">
-              {{ sp.gia|intcomma }} VNĐ
-            </div>
+            <div class="price-tag fw-semibold mb-2">{{ sp.gia|intcomma }} VNĐ</div>
 
             <div class="mt-auto d-flex flex-column gap-2">
-              <a href="{% url 'shop:checkout' %}?buy_now={{ sp.id }}" 
-              class="btn btn-buy-now w-100">Mua ngay</a>
+              <a href="{% url 'shop:checkout' %}?buy_now={{ sp.id }}" class="btn btn-buy-now w-100">
+                <i class="bi bi-lightning-charge-fill me-1"></i> Mua ngay
+              </a>
 
               <button type="button"
                       class="btn btn-add-cart w-100"
                       data-id="{{ sp.id }}"
                       data-name="{{ sp.ten }}">
-                Thêm vào giỏ
+                <i class="bi bi-bag-plus me-1"></i> Thêm vào giỏ
               </button>
+
+              <a href="{% url 'shop:product_detail' sp.id %}" class="btn btn-view-detail w-100">
+                <i class="bi bi-eye me-1"></i> Xem chi tiết
+              </a>
             </div>
           </div>
         </div>
@@ -73,7 +112,6 @@
     </div>
   </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -87,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const r = await fetch("{% url 'shop:api_cart_badge' %}");
       if (!r.ok) return;
       const data = await r.json();
-      // nếu bạn có badge trên navbar, cập nhật tại đây
       if (window.updateCartBadge) window.updateCartBadge(data.count, data.total);
     } catch(e){}
   }
@@ -99,17 +136,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!id) return;
 
       try {
-        const res = await fetch("{% url 'shop:api_add_to_cart' sp_id='SPID' %}".replace('SPID', id), {
-          method: "POST"
-        });
-
+        const res = await fetch("{% url 'shop:api_add_to_cart' sp_id='SPID' %}".replace('SPID', id), { method: "POST" });
         const data = await res.json().catch(() => ({}));
 
         if (res.ok && data.success) {
           toastSuccess.show();
           refreshBadge();
         } else if (res.status === 401) {
-          // Chưa đăng nhập -> đưa về trang login
           window.location.href = "{% url 'shop:auth_login_page' %}";
         } else {
           toastError.show();
@@ -124,6 +157,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
-
-
-

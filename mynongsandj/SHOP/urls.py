@@ -15,6 +15,8 @@ urlpatterns = [
     path("", home.home, name="home"),
     path("sanpham/", sanpham.sanpham_list, name="sanpham_list"),
     path("sanpham/category/<str:cat_id>/", sanpham.product_by_category, name="product_by_category"),
+    path("sanpham/<str:sp_id>/", sanpham.product_detail, name="product_detail"),
+
     # path("sanpham/add/<str:sp_id>/", sanpham.add_to_cart, name="add_to_cart"),
 
     path("danh-muc/", dm.list_danh_muc, name="danh_muc_list"),
@@ -52,6 +54,11 @@ urlpatterns = [
     path("admin-panel/products/create/", spv.product_create, name="admin_product_create"),
     path("admin-panel/products/<str:id>/edit/", spv.product_edit, name="admin_product_edit"),
     path("admin-panel/products/<str:id>/delete/", spv.product_delete, name="admin_product_delete"),
+    path("admin-panel/categories/", av.categories_list, name="admin_categories"),
+    path("admin-panel/categories/create/", av.category_create, name="admin_category_create"),
+    path("admin-panel/categories/<str:id>/edit/", av.category_edit, name="admin_category_edit"),
+    path("admin-panel/categories/<str:id>/delete/", av.category_delete, name="admin_category_delete"),
+
 
     # Auth pages
     path("auth/login/",    ap.login_page,    name="auth_login_page"),
