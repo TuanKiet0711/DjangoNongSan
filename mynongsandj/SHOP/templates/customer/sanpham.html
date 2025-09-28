@@ -31,7 +31,8 @@
             </div>
 
             <div class="mt-auto d-flex flex-column gap-2">
-              <a href="#" class="btn btn-buy-now w-100">Mua ngay</a>
+              <a href="{% url 'shop:checkout' %}?buy_now={{ sp.id }}" 
+              class="btn btn-buy-now w-100">Mua ngay</a>
 
               <button type="button"
                       class="btn btn-add-cart w-100"
@@ -52,11 +53,45 @@
     </div>
   </div>
 </section>
+
+<!-- Toast thành công -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+  <div id="cartToastSuccess" class="toast text-bg-success border-0">
+    <div class="d-flex">
+      <div class="toast-body">✅ Thêm vào giỏ hàng thành công!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast lỗi -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+  <div id="cartToastError" class="toast text-bg-danger border-0">
+    <div class="d-flex">
+      <div class="toast-body">❌ Lỗi khi thêm vào giỏ!</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
-{% comment %} {% block extra_js %}
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  const toastSuccess = new bootstrap.Toast(document.getElementById('cartToastSuccess'), { delay: 2000 });
+  const toastError = new bootstrap.Toast(document.getElementById('cartToastError'), { delay: 2000 });
+
+  async function refreshBadge() {
+    try {
+      const r = await fetch("{% url 'shop:api_cart_badge' %}");
+      if (!r.ok) return;
+      const data = await r.json();
+      // nếu bạn có badge trên navbar, cập nhật tại đây
+      if (window.updateCartBadge) window.updateCartBadge(data.count, data.total);
+    } catch(e){}
+  }
+
   document.querySelectorAll('.btn-add-cart').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
@@ -64,29 +99,31 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!id) return;
 
       try {
-        const res = await fetch('/api/cart/items/', {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify({ san_pham_id: id, so_luong: 1 })
+        const res = await fetch("{% url 'shop:api_add_to_cart' sp_id='SPID' %}".replace('SPID', id), {
+          method: "POST"
         });
 
-        if (res.status === 201) {
-          // Không hiện thông báo — chỉ cập nhật badge ở navbar
-          if (window.updateCartBadge) window.updateCartBadge();
-        } else if (res.status === 400 || res.status === 401) {
-          // Chưa login → chuyển tới trang đăng nhập
-          window.location.href = '{% url "shop:shop_login" %}';
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success) {
+          toastSuccess.show();
+          refreshBadge();
+        } else if (res.status === 401) {
+          // Chưa đăng nhập -> đưa về trang login
+          window.location.href = "{% url 'shop:auth_login_page' %}";
         } else {
-          // Lỗi khác: log console cho dev
-          let err = {};
-          try { err = await res.json(); } catch(e){}
-          console.error('Cart add error:', res.status, err);
+          toastError.show();
+          console.error("Add to cart error:", res.status, data);
         }
-      } catch (ex) {
-        console.error('Fetch failed:', ex);
+      } catch (err) {
+        toastError.show();
+        console.error("Fetch error:", err);
       }
     });
   });
 });
 </script>
-{% endblock %} {% endcomment %}
+{% endblock %}
+
+
+
