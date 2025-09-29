@@ -6,8 +6,27 @@
 <div class="card border-danger shadow-sm">
   <div class="card-body">
     <h5 class="text-danger">Bạn chắc chắn muốn xóa sản phẩm này?</h5>
+
     <p class="mb-1">ID: <code class="small">{{ product_id }}</code></p>
-    <p class="mb-3">Tên: <span id="productName" class="fw-semibold">Đang tải…</span></p>
+
+    <div class="mb-2">
+      <strong>Tên:</strong> <span id="productName" class="fw-semibold">Đang tải…</span>
+    </div>
+    <div class="mb-2">
+      <strong>Danh mục:</strong> <span id="productCategory">Đang tải…</span>
+    </div>
+    <div class="mb-2">
+      <strong>Giá:</strong> <span id="productPrice">Đang tải…</span>
+    </div>
+    <div class="mb-2">
+      <strong>Mô tả:</strong>
+      <div id="productDesc" class="small text-muted"></div>
+    </div>
+    <div class="mb-3">
+      <strong>Hình ảnh:</strong><br>
+      <img id="productImage" src="" alt="Ảnh sản phẩm" style="max-height:120px; display:none; border:1px solid #ccc; padding:3px;">
+    </div>
+
     <div class="d-flex gap-2">
       <button id="btnDelete" class="btn btn-danger">Xóa</button>
       <a class="btn btn-secondary" href="{% url 'shop:admin_products' %}">Hủy</a>
@@ -30,11 +49,21 @@
   }
   const CSRF = getCookie('csrftoken');
 
-  // load name
+  // load product info
   const res = await fetch(`/api/products/${id}/`);
   if(res.ok){
     const data = await res.json();
     document.getElementById('productName').textContent = data.ten_san_pham || '(không xác định)';
+    document.getElementById('productCategory').textContent = data.danh_muc_id || 'Chưa phân loại';
+    // Giá có dấu phẩy
+    const price = (data.gia || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    document.getElementById('productPrice').textContent = price + ' đ';
+    document.getElementById('productDesc').textContent = data.mo_ta || '';
+    if(data.hinh_anh && data.hinh_anh.length>0){
+      const img = document.getElementById('productImage');
+      img.src = '/media/' + data.hinh_anh[0];
+      img.style.display='block';
+    }
   } else {
     document.getElementById('productName').textContent = 'Không tìm thấy';
   }

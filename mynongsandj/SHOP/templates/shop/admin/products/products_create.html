@@ -8,7 +8,7 @@
     <form id="createForm" autocomplete="off" enctype="multipart/form-data">
       <div class="mb-3">
         <label class="form-label fw-semibold" for="ten">Tên sản phẩm</label>
-        <input type="text" id="ten" class="form-control" required placeholder="VD: Táo Mỹ" />
+        <input type="text" id="ten" class="form-control" required placeholder="Nhập tên sản phẩm" />
       </div>
 
       <div class="mb-3">
@@ -18,7 +18,17 @@
 
       <div class="mb-3">
         <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
-        <input type="number" id="gia" class="form-control" required min="0" step="1000" placeholder="85000" />
+        <!-- input text để format dấu phẩy -->
+        <input
+          type="text"
+          id="gia"
+          class="form-control"
+          required
+          inputmode="numeric"
+          pattern="[0-9,]*"
+          placeholder="Nhập giá"
+          autocomplete="off"
+        />
       </div>
 
       <div class="mb-3">
@@ -29,14 +39,28 @@
         </div>
       </div>
 
+      <!-- Danh mục: dropdown scroll -->
       <div class="mb-3">
         <label class="form-label">Danh mục</label>
-        <select id="danh_muc_id" class="form-select" required>
-          <option value="">-- Chọn danh mục --</option>
-          {% for cat in categories %}
-            <option value="{{ cat.id }}">{{ cat.ten }}</option>
-          {% endfor %}
-        </select>
+        <input type="hidden" id="danh_muc_id" required>
+        <div class="dropdown w-100">
+          <button
+            class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center"
+            type="button"
+            id="btnDanhMuc"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            <span id="labelDanhMuc">-- Chọn danh mục --</span>
+            <span class="ms-2">▾</span>
+          </button>
+          <ul class="dropdown-menu w-100 p-1" style="max-height: 260px; overflow: auto;">
+            {% for cat in categories %}
+              <li><a class="dropdown-item" href="#" data-id="{{ cat.id }}">{{ cat.ten }}</a></li>
+            {% endfor %}
+          </ul>
+        </div>
+        <div class="form-text text-danger d-none" id="dmError">Vui lòng chọn danh mục</div>
       </div>
 
       <div class="d-flex gap-2">
@@ -51,6 +75,7 @@
 {% block extra_js %}
 <script>
 ;(function () {
+  // CSRF
   function getCookie(name) {
     let v = null
     if (document.cookie)
@@ -64,9 +89,17 @@
     return v
   }
   const CSRF = getCookie('csrftoken')
+
   const form = document.getElementById('createForm')
   const fileInput = document.getElementById('hinh_anh')
   const preview = document.getElementById('preview_img')
+  const giaInput = document.getElementById('gia')
+
+  // Danh mục dropdown
+  const dmHidden = document.getElementById('danh_muc_id')
+  const dmLabel  = document.getElementById('labelDanhMuc')
+  const dmError  = document.getElementById('dmError')
+  const dmMenu   = document.querySelector('.dropdown .dropdown-menu')
 
   // Preview ảnh khi chọn file
   fileInput.addEventListener('change', () => {
@@ -82,14 +115,46 @@
     }
   })
 
+  // Chọn danh mục
+  dmMenu.addEventListener('click', (e) => {
+    const item = e.target.closest('.dropdown-item')
+    if (!item) return
+    e.preventDefault()
+    dmHidden.value = item.dataset.id || ''
+    dmLabel.textContent = item.textContent.trim() || '-- Chọn danh mục --'
+    dmError.classList.add('d-none')
+  })
+
+  // Format giá dấu phẩy
+  const formatComma = (digitsStr) => {
+    const clean = (digitsStr || '').replace(/[^\d]/g, '')
+    if (!clean) return ''
+    return clean.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+  giaInput.addEventListener('input', (e) => {
+    const val = e.target.value
+    const formatted = formatComma(val)
+    if (formatted !== val) {
+      const end = formatted.length
+      e.target.value = formatted
+      e.target.setSelectionRange(end, end)
+    }
+  })
+  giaInput.addEventListener('blur', (e) => {
+    e.target.value = formatComma(e.target.value)
+  })
+
+  // Submit
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
     const ten = document.getElementById('ten').value.trim()
     const mo_ta = document.getElementById('mo_ta').value.trim()
-    const gia = parseInt(document.getElementById('gia').value, 10) || 0
-    const danh_muc_id = document.getElementById('danh_muc_id').value
+    const giaRaw = giaInput.value.trim()
+    const gia = parseInt(giaRaw.replace(/[^\d]/g, ''), 10) || 0
+    const danh_muc_id = dmHidden.value
 
     if (!ten || !danh_muc_id) {
+      if (!danh_muc_id) dmError.classList.remove('d-none')
       alert('Vui lòng nhập đủ thông tin')
       return
     }

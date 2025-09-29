@@ -1,4 +1,6 @@
+
 {% extends "shop/admin/base_admin.html" %}
+{% load humanize %}
 {% block title %}Sản phẩm · Admin{% endblock %}
 {% block page_title %}Sản phẩm{% endblock %}
 
@@ -100,12 +102,13 @@
         <table class="table align-middle mb-0">
           <thead>
             <tr>
-              <th style="width:18%">ID</th>
-              <th style="width:22%">Tên sản phẩm</th>
-              <th style="width:20%">Danh mục</th>
-              <th style="width:15%">Giá</th>
-              <th style="width:15%">Ảnh</th>
-              <th class="text-end" style="width:10%">Hành động</th>
+              <th style="width:12%">ID</th>
+              <th style="width:18%">Tên sản phẩm</th>
+              <th style="width:18%">Danh mục</th>
+              <th style="width:18%">Mô tả</th>
+              <th style="width:10%">Giá</th>
+              <th style="width:10%">Ảnh</th>
+              <th class="text-end" style="width:14%">Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -115,7 +118,8 @@
                   <td><code class="small">{{ sp.id }}</code></td>
                   <td>{{ sp.ten }}</td>
                   <td>{{ sp.danh_muc }}</td>
-                  <td>{{ sp.gia|floatformat:0 }} đ</td>
+                  <td class="small text-muted">{{ sp.mo_ta|truncatechars:50 }}</td>
+                  <td>{{ sp.gia|intcomma }} đ</td>
                   <td>
                     {% if sp.hinh_anh %}
                       <img src="/media/{{ sp.hinh_anh }}" class="thumb-img" />
@@ -133,14 +137,8 @@
                   </td>
                 </tr>
               {% endfor %}
-              {% for _ in placeholders %}
-                <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
-              {% endfor %}
             {% else %}
-              <tr><td colspan="6" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
-              {% for _ in placeholders %}
-                <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
-              {% endfor %}
+              <tr><td colspan="7" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
             {% endif %}
           </tbody>
         </table>
