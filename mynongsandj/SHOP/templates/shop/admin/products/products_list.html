@@ -1,4 +1,3 @@
-
 {% extends "shop/admin/base_admin.html" %}
 {% load humanize %}
 {% block title %}Sản phẩm · Admin{% endblock %}
@@ -7,14 +6,17 @@
 {% block content %}
 <style>
   html, body {height: 100%; overflow: hidden;}
-  .admin-fixed {height: calc(100vh - 0px); display: flex; flex-direction: column; overflow: hidden;}
+  .admin-fixed {height: 100vh; display:flex; flex-direction:column; overflow:hidden;}
   .toolbar-tight {margin-bottom:.5rem!important;}
   .card-body-tight {padding:.5rem 1rem!important;}
   .table-flex {flex:1 1 auto; min-height:0; overflow:hidden;}
 
-  /* Thanh tìm kiếm đẹp */
+  /* Ẩn messages mặc định của Django trong page */
+  .alert, .messages, .django-messages {display:none !important;}
+
+  /* Searchbar */
   .searchbar { --h: 38px; flex:1 1 auto; }
-  .searchbar .inputbox {position:relative;flex:1 1 auto;min-width:300px;}
+  .searchbar .inputbox {position:relative; flex:1 1 auto; min-width:300px;}
   .searchbar .inputbox .icon {
     position:absolute; left:12px; top:50%; transform:translateY(-50%);
     opacity:.65; color:#6c757d;
@@ -33,48 +35,64 @@
     background:linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
     color:#fff; border:none; font-weight:600; border-radius:12px;
     padding:.35rem .9rem; box-shadow:0 8px 16px rgba(60,120,240,.18);
-    transition:transform .08s ease,filter .2s ease;
   }
-  .searchbar .btn-find:hover {filter:brightness(1.04);transform:translateY(-1px);}
-  .btn-reset {border-radius:12px;height:var(--h);margin-left:8px;}
+  .btn-reset {border-radius:12px; height:var(--h); margin-left:8px;}
 
-  /* Ảnh thumbnail */
-  .thumb-img {
-    width: 80px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;
-  }
+  /* Thumb ảnh */
+  .thumb-img {width:80px; height:60px; object-fit:cover; border-radius:4px; border:1px solid #ddd;}
 
-  /* Pagination cố định */
+  /* Pagination dưới đáy card */
   .pagination-fixed {
-    position:sticky; /* dính dưới card-body */
-    bottom:0;
-    background:#fff; border-top:1px solid rgba(0,0,0,.05);
-    padding:.5rem .75rem;
-    display:flex; justify-content:flex-start; align-items:center;
+    position:sticky; bottom:0; background:#fff;
+    border-top:1px solid rgba(0,0,0,.05);
+    padding:.5rem .75rem; display:flex; justify-content:flex-start; align-items:center;
   }
-  .pagination-fixed .pagination {gap: 4px; margin-bottom:0;}
+  .pagination-fixed .pagination {gap:4px; margin-bottom:0;}
   .pagination-fixed .page-link {
-    min-width: 34px; height: 34px; padding: 0.25rem 0.6rem;
-    text-align: center; line-height: 1.5;
-    border-radius: 50% !important; color: #495057;
-    border: none; background: #f8f9fa;
-    box-shadow: 0 2px 6px rgba(0,0,0,.05);
-    transition: all .2s ease;
+    min-width:34px; height:34px; padding:.25rem .6rem;
+    text-align:center; border-radius:50%!important;
+    color:#495057; border:none; background:#f8f9fa;
+    box-shadow:0 2px 6px rgba(0,0,0,.05);
   }
-  .pagination-fixed .page-link:hover {
-    background: #4f8cff; color: #fff;
-  }
+  .pagination-fixed .page-link:hover {background:#4f8cff; color:#fff;}
   .pagination-fixed .page-item.active .page-link {
-    background: #3b78ff; color: #fff;
-    box-shadow: 0 4px 12px rgba(60,120,240,.25);
+    background:#3b78ff; color:#fff; box-shadow:0 4px 12px rgba(60,120,240,.25);
   }
   .pagination-fixed .page-item.disabled .page-link {
-    opacity: .5; pointer-events: none; background: #f1f1f1;
+    opacity:.5; pointer-events:none; background:#f1f1f1;
   }
+
+  /* Toast góc phải */
+  .toast-container{
+    position:fixed;
+    top:16px;
+    right:16px;
+    z-index:1080;           /* nằm trên card & navbar */
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    pointer-events:none;    /* click xuyên nếu ngoài toast */
+  }
+  .toast{
+    min-width:220px;
+    max-width:320px;
+    background:#059669;     /* xanh success */
+    color:#fff;
+    padding:.6rem .9rem;
+    border-radius:12px;
+    box-shadow:0 8px 24px rgba(0,0,0,.2);
+    opacity:0;
+    transform:translateY(-10px);
+    transition:all .3s ease;
+    pointer-events:auto;    /* bản thân toast vẫn click được */
+  }
+  .toast.show{opacity:1; transform:translateY(0);}
+  .toast.error{background:#dc2626;} /* màu đỏ khi lỗi */
 </style>
 
 <div class="admin-fixed">
 
-  <!-- Thanh tìm kiếm + nút thêm sản phẩm -->
+  <!-- Toolbar -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
     <form id="searchForm" class="d-flex searchbar" method="get" action="" style="min-width:420px">
       <div class="inputbox">
@@ -85,12 +103,8 @@
           <i class="bi bi-x-circle"></i>
         </button>
       </div>
-      <button class="btn btn-find" type="submit">
-        <i class="bi bi-funnel me-1"></i>Tìm
-      </button>
-      <a class="btn btn-light btn-reset" href="{% url 'shop:admin_products' %}">
-        <i class="bi bi-x-circle me-1"></i>Xóa lọc
-      </a>
+      <button class="btn btn-find" type="submit"><i class="bi bi-funnel me-1"></i>Tìm</button>
+      <a class="btn btn-light btn-reset" href="{% url 'shop:admin_products' %}"><i class="bi bi-x-circle me-1"></i>Xóa lọc</a>
     </form>
     <a class="btn btn-success btn-sm" href="{% url 'shop:admin_product_create' %}">+ Thêm sản phẩm</a>
   </div>
@@ -112,44 +126,42 @@
             </tr>
           </thead>
           <tbody>
-            {% if items %}
-              {% for sp in items %}
-                <tr>
-                  <td><code class="small">{{ sp.id }}</code></td>
-                  <td>{{ sp.ten }}</td>
-                  <td>{{ sp.danh_muc }}</td>
-                  <td class="small text-muted">{{ sp.mo_ta|truncatechars:50 }}</td>
-                  <td>{{ sp.gia|intcomma }} đ</td>
-                  <td>
-                    {% if sp.hinh_anh %}
-                      <img src="/media/{{ sp.hinh_anh }}" class="thumb-img" />
-                    {% else %}
-                      <span class="text-muted small">Không có ảnh</span>
-                    {% endif %}
-                  </td>
-                  <td class="text-end">
-                    <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_product_edit' sp.id %}">
-                      <i class="bi bi-pencil"></i> Sửa
-                    </a>
-                    <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_product_delete' sp.id %}">
-                      <i class="bi bi-trash"></i> Xóa
-                    </a>
-                  </td>
-                </tr>
-              {% endfor %}
-            {% else %}
-              <tr><td colspan="7" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
-            {% endif %}
+          {% if items %}
+            {% for sp in items %}
+              <tr>
+                <td><code class="small">{{ sp.id }}</code></td>
+                <td>{{ sp.ten }}</td>
+                <td>{{ sp.danh_muc }}</td>
+                <td class="small text-muted">{{ sp.mo_ta|truncatechars:50 }}</td>
+                <td>{{ sp.gia|intcomma }} đ</td>
+                <td>
+                  {% if sp.hinh_anh %}
+                    <img src="/media/{{ sp.hinh_anh }}" class="thumb-img" alt="Ảnh sản phẩm {{ sp.ten }}"/>
+                  {% else %}
+                    <span class="text-muted small">Không có ảnh</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_product_edit' sp.id %}">
+                    <i class="bi bi-pencil"></i> Sửa
+                  </a>
+                  <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_product_delete' sp.id %}">
+                    <i class="bi bi-trash"></i> Xóa
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
+          {% endif %}
           </tbody>
         </table>
       </div>
 
-      <!-- Phân trang cố định ngay dưới bảng -->
+      <!-- Pagination -->
       <div class="pagination-fixed w-100">
-        <div class="me-3 text-muted small">
-          Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục
-        </div>
-        <nav aria-label="Pagination">
+        <div class="me-3 text-muted small">Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục</div>
+        <nav>
           <ul class="pagination mb-0">
             <li class="page-item {% if not has_prev %}disabled{% endif %}">
               <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">‹</a>
@@ -165,24 +177,71 @@
           </ul>
         </nav>
       </div>
-
     </div>
   </div>
-
 </div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastBox" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 (function(){
-  const qInput=document.getElementById('qInput');
-  const btnClear=document.getElementById('btnClear');
-  const form=document.getElementById('searchForm');
-  function toggleClear(){btnClear.classList.toggle('d-none',!qInput.value.trim());}
-  btnClear.addEventListener('click',()=>{qInput.value='';toggleClear();form.submit();});
-  qInput.addEventListener('input',toggleClear);
-  document.addEventListener('keydown',e=>{
-    if(e.key==='/' && document.activeElement!==qInput){e.preventDefault();qInput.focus();qInput.select();}
-  });
+  // ====== Searchbar ======
+  const qInput = document.getElementById('qInput');
+  const btnClear = document.getElementById('btnClear');
+  const form = document.getElementById('searchForm');
+
+  function toggleClear(){
+    if(!btnClear || !qInput) return;
+    btnClear.classList.toggle('d-none', !qInput.value.trim());
+  }
+  if(btnClear){
+    btnClear.addEventListener('click', ()=>{
+      if(!qInput || !form) return;
+      qInput.value=''; toggleClear(); form.submit();
+    });
+  }
+  if(qInput){
+    qInput.addEventListener('input', toggleClear);
+    document.addEventListener('keydown', e=>{
+      if(e.key==='/' && document.activeElement!==qInput){
+        e.preventDefault(); qInput.focus(); qInput.select();
+      }
+    });
+  }
   toggleClear();
+
+  // ====== Toast API ======
+  // Dùng: window.showToast("Nội dung", "success"|"error", {timeout:3000})
+  function showToast(msg="Thao tác thành công", type="success", opts={}){
+    const box = document.getElementById('toastBox');
+    if(!box){ console.warn('Không tìm thấy #toastBox'); return; }
+
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'error' ? ' error' : '');
+    el.role = 'status';
+    el.textContent = msg;
+
+    box.appendChild(el);
+    // kích hoạt hiệu ứng
+    requestAnimationFrame(()=> el.classList.add('show'));
+
+    const timeout = Number.isFinite(opts.timeout) ? opts.timeout : 3000;
+    setTimeout(()=>{
+      el.classList.remove('show');
+      setTimeout(()=> el.remove(), 300); // đợi transition
+    }, timeout);
+  }
+  // expose global
+  window.showToast = showToast;
+
+  // ====== Render Django messages ra toast ======
+  // Yêu cầu: view set message.success(...) / message.error(...)
+  {% if messages %}
+    {% for m in messages %}
+      showToast("{{ m|escapejs }}", "{% if 'error' in m.tags %}error{% else %}success{% endif %}");
+    {% endfor %}
+  {% endif %}
 })();
 </script>
 {% endblock %}

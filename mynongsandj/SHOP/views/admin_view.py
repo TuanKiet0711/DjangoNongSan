@@ -142,3 +142,133 @@ def category_delete(request, id):
     else:
         messages.success(request, "Đã xoá danh mục.")
     return redirect("shop:admin_categories")
+# =================== ACCOUNTS (ADMIN) =================== #
+from .taikhoan_view import _safe_user
+from ..database import taikhoan as tai_khoan
+
+# SHOP/views/admin_view.py
+
+PAGE_SIZE = 6  # bạn đã có ở trên, tận dụng luôn
+
+@admin_required
+def accounts_list(request):
+    q = (request.GET.get("q") or "").strip()
+    role = (request.GET.get("vaiTro") or "").strip()
+    page = max(int(request.GET.get("page", 1)), 1)
+
+    page_size = PAGE_SIZE  # 👈 đổi từ 10 thành 6 (dùng hằng có sẵn)
+
+    filter_ = {}
+    if q:
+        filter_["$or"] = [
+            {"hoTen": {"$regex": q, "$options": "i"}},
+            {"email": {"$regex": q, "$options": "i"}},
+            {"sdt": {"$regex": q, "$options": "i"}},
+        ]
+    if role:
+        filter_["vaiTro"] = role
+
+    total = tai_khoan.count_documents(filter_)
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    page = min(page, total_pages)
+    skip = (page - 1) * page_size
+
+    cursor = tai_khoan.find(filter_).sort("hoTen", 1).skip(skip).limit(page_size)
+    items = [_safe_user(acc) for acc in cursor]
+
+    ctx = {
+        "items": items,
+        "q": q,
+        "role": role,
+        "page": page,
+        "total_pages": total_pages,
+        "total": total,
+        "page_numbers": list(range(1, total_pages + 1)),
+    }
+    return render(request, "shop/admin/accounts/list.html", ctx)
+
+
+@admin_required
+def account_create(request):
+    if request.method == "GET":
+        return render(request, "shop/admin/accounts/create.html")
+
+    hoTen = (request.POST.get("hoTen") or "").strip()
+    email = (request.POST.get("email") or "").strip().lower()
+    sdt = (request.POST.get("sdt") or "").strip()
+    matKhau = (request.POST.get("matKhau") or "").strip()
+    vaiTro = (request.POST.get("vaiTro") or "customer").strip() or "customer"
+
+    if not hoTen or not email or not matKhau:
+        messages.error(request, "Vui lòng nhập đủ Họ tên, Email, Mật khẩu.")
+        return redirect("shop:admin_account_create")
+
+    if tai_khoan.find_one({"email": email}):
+        messages.error(request, "Email đã tồn tại.")
+        return redirect("shop:admin_account_create")
+
+    tai_khoan.insert_one({
+        "hoTen": hoTen, "email": email, "sdt": sdt,
+        "matKhau": matKhau, "vaiTro": vaiTro
+    })
+    messages.success(request, f"Đã thêm tài khoản: {hoTen}")
+    return redirect("shop:admin_accounts")
+
+
+@admin_required
+def account_edit(request, id):
+    from bson import ObjectId
+    try:
+        oid = ObjectId(id)
+    except Exception:
+        messages.error(request, "ID không hợp lệ.")
+        return redirect("shop:admin_accounts")
+
+    acc = tai_khoan.find_one({"_id": oid})
+    if not acc:
+        messages.error(request, "Không tìm thấy tài khoản.")
+        return redirect("shop:admin_accounts")
+
+    if request.method == "GET":
+        return render(request, "shop/admin/accounts/edit.html", {"account": _safe_user(acc)})
+
+    hoTen = (request.POST.get("hoTen") or "").strip()
+    email = (request.POST.get("email") or "").strip().lower()
+    sdt = (request.POST.get("sdt") or "").strip()
+    matKhau = (request.POST.get("matKhau") or "").strip()
+    vaiTro = (request.POST.get("vaiTro") or "").strip()
+
+    update = {"hoTen": hoTen, "email": email, "sdt": sdt, "vaiTro": vaiTro}
+    if matKhau:
+        update["matKhau"] = matKhau
+
+    # check email trùng
+    if tai_khoan.find_one({"email": email, "_id": {"$ne": oid}}):
+        messages.error(request, "Email đã tồn tại.")
+        return redirect("shop:admin_account_edit", id=id)
+
+    tai_khoan.update_one({"_id": oid}, {"$set": update})
+    messages.success(request, "Cập nhật tài khoản thành công.")
+    return redirect("shop:admin_accounts")
+
+
+@admin_required
+def account_delete(request, id):
+    from bson import ObjectId
+    try:
+        oid = ObjectId(id)
+    except Exception:
+        messages.error(request, "ID không hợp lệ.")
+        return redirect("shop:admin_accounts")
+
+    acc = tai_khoan.find_one({"_id": oid})
+    if not acc:
+        messages.error(request, "Không tìm thấy tài khoản.")
+        return redirect("shop:admin_accounts")
+
+    if request.method == "GET":
+        return render(request, "shop/admin/accounts/delete.html", {"account": _safe_user(acc)})
+
+    tai_khoan.delete_one({"_id": oid})
+    messages.success(request, "Đã xoá tài khoản.")
+    return redirect("shop:admin_accounts")

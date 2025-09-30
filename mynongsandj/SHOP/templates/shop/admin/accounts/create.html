@@ -1,0 +1,196 @@
+{% extends "shop/admin/base_admin.html" %}
+{% load static %}
+{% block title %}Thêm tài khoản{% endblock %}
+{% block page_title %}Tài khoản{% endblock %}
+
+{% block content %}
+<style>
+  /* ===== Layout tổng ===== */
+  .page {max-width:1080px; margin:0 auto; padding:4px 12px 72px;}
+  .page h2.title {font-size:26px; font-weight:800; color:#065f46; margin:0 0 .25rem;}
+  .subtitle {font-size:13px; color:#6b7280; margin-bottom:18px;}
+  .grid {display:grid; grid-template-columns:1fr; gap:18px;}
+  @media (min-width: 900px){ .grid{grid-template-columns:1fr 1fr;} }
+
+  /* ===== Section mảnh ===== */
+  .section {background:transparent; border-radius:14px; padding:0;}
+  .section .hd {
+    display:flex; align-items:center; gap:10px; margin-bottom:10px;
+    color:#065f46; font-weight:700;
+  }
+  .bar {height:3px; width:28px; border-radius:4px; background:#10b981; box-shadow:0 6px 16px rgba(16,185,129,.25);}
+
+  /* ===== Field ===== */
+  .field {display:grid; gap:6px; margin-bottom:12px;}
+  .label {font-weight:600; color:#374151; font-size:13px;}
+  .ctrl {position:relative;}
+  .ctrl input, .ctrl select{
+    width:100%; height:44px; border-radius:12px; border:1px solid rgba(0,0,0,.08);
+    padding:0 14px 0 40px; outline:none; background:#fff;
+    box-shadow:0 6px 18px rgba(16,185,129,.06);
+    transition:border-color .15s ease, box-shadow .15s ease, background .2s ease;
+  }
+  .ctrl select{padding-left:14px;}
+  .ctrl input:focus, .ctrl select:focus{
+    border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15), 0 8px 20px rgba(16,185,129,.10);
+    background:#fafdfb;
+  }
+  .icon{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#6b7280; opacity:.9; pointer-events:none;}
+  .hint{font-size:12px; color:#6b7280;}
+  .err{font-size:12px; color:#b91c1c;}
+
+  /* ===== Meter mật khẩu ===== */
+  .meter{height:6px; border-radius:999px; background:#eef2f7; overflow:hidden;}
+  .meter > span{display:block; height:100%; width:0%; background:#ef4444; transition:width .25s ease, background .25s ease; border-radius:inherit;}
+  .meter.ok  > span{background:#f59e0b;}
+  .meter.good> span{background:#10b981;}
+  .meter.great>span{background:#059669;}
+
+  /* ===== Thanh hành động dính đáy ===== */
+  .action-bar{
+    position:sticky; bottom:0; left:0; right:0;
+    display:flex; justify-content:flex-end; gap:10px;
+    padding:10px 0; background:linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.65));
+    backdrop-filter:blur(6px);
+    border-top:1px solid rgba(0,0,0,.06);
+  }
+  .btn{
+    display:inline-flex; align-items:center; gap:6px; padding:.6rem .95rem; border-radius:12px;
+    border:1px solid rgba(0,0,0,.08); background:#fff; color:#374151; transition:transform .08s ease, filter .2s ease;
+  }
+  .btn:hover{filter:brightness(1.02);}
+  .btn-emerald{background:#059669; color:#fff; border-color:#059669; box-shadow:0 10px 22px rgba(5,150,105,.18);}
+  .btn-emerald:hover{filter:brightness(1.05); transform:translateY(-1px);}
+  .toggle-eye{position:absolute; right:10px; top:50%; transform:translateY(-50%); background:transparent; border:none; color:#6b7280; opacity:.85;}
+</style>
+
+<div class="page">
+  <h2 class="title">Thêm tài khoản</h2>
+  <div class="subtitle">Điền thông tin người dùng mới. Trường có dấu * là bắt buộc.</div>
+
+  <form method="post" action="{% url 'shop:admin_account_create' %}" novalidate>
+    {% csrf_token %}
+
+    <div class="grid">
+      <!-- Cột 1: Thông tin cơ bản -->
+      <section class="section">
+        <div class="hd"><span class="bar"></span>Thông tin cơ bản</div>
+
+        <div class="field">
+          <label class="label">Họ tên *</label>
+          <div class="ctrl">
+            <i class="bi bi-person icon"></i>
+            <input name="hoTen" required placeholder="Nhập họ và tên">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Email *</label>
+          <div class="ctrl">
+            <i class="bi bi-envelope icon"></i>
+            <input name="email" id="email" type="email" required placeholder="Nhập email">
+          </div>
+          <div class="hint" id="emailHint">Dùng để đăng nhập & nhận thông báo.</div>
+        </div>
+
+        <div class="field">
+          <label class="label">SĐT</label>
+          <div class="ctrl">
+            <i class="bi bi-telephone icon"></i>
+            <input name="sdt" placeholder="Nhập số điện thoại">
+          </div>
+        </div>
+      </section>
+
+      <!-- Cột 2: Vai trò & Bảo mật -->
+      <section class="section">
+        <div class="hd"><span class="bar"></span>Vai trò & bảo mật</div>
+
+        <div class="field">
+          <label class="label">Vai trò</label>
+          <div class="ctrl">
+            <select name="vaiTro">
+              <option value="customer">Customer</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Mật khẩu *</label>
+          <div class="ctrl">
+            <i class="bi bi-shield-lock icon"></i>
+            <input name="matKhau" id="pwd" type="password" required placeholder="Tối thiểu 6 ký tự">
+            <button class="toggle-eye" type="button" id="togglePwd" aria-label="Hiện/ẩn mật khẩu">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+          <div class="meter" id="pwdMeter"><span></span></div>
+          <div class="hint" id="pwdHint">Mẹo: phối hợp chữ hoa, thường, số & ký tự đặc biệt.</div>
+          <div class="err d-none" id="capsWarn">⚠️ Caps Lock đang bật.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Thanh hành động dính đáy -->
+    <div class="action-bar">
+      <a href="{% url 'shop:admin_accounts' %}" class="btn"><i class="bi bi-arrow-left"></i> Hủy</a>
+      <button class="btn btn-emerald"><i class="bi bi-check2-circle"></i> Lưu</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+  const email = document.getElementById('email');
+  const emailHint = document.getElementById('emailHint');
+  const pwd = document.getElementById('pwd');
+  const toggle = document.getElementById('togglePwd');
+  const capsWarn = document.getElementById('capsWarn');
+  const meter = document.getElementById('pwdMeter');
+  const meterBar = meter.querySelector('span');
+  const pwdHint = document.getElementById('pwdHint');
+
+  // Email hint
+  if (email) {
+    email.addEventListener('input', () => {
+      if (!email.value) { emailHint.textContent='Dùng để đăng nhập & nhận thông báo.'; emailHint.style.color='#6b7280'; return; }
+      if (email.validity.valid) { emailHint.textContent='Email hợp lệ.'; emailHint.style.color='#065f46'; }
+      else { emailHint.textContent='Email không hợp lệ.'; emailHint.style.color='#b91c1c'; }
+    });
+  }
+
+  // Toggle password
+  if (toggle && pwd) {
+    toggle.addEventListener('click', ()=>{
+      const t = pwd.type === 'password' ? 'text' : 'password';
+      pwd.type = t;
+      toggle.innerHTML = t==='password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+    });
+  }
+
+  // Caps Lock warn + strength meter
+  if (pwd) {
+    pwd.addEventListener('keyup', (e)=>{
+      const on = e.getModifierState && e.getModifierState('CapsLock');
+      capsWarn.classList.toggle('d-none', !on);
+    });
+    pwd.addEventListener('input', ()=>{
+      const v = pwd.value || '';
+      let score = 0;
+      if (v.length >= 6) score++;
+      if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+      if (/\d/.test(v)) score++;
+      if (/[^A-Za-z0-9]/.test(v)) score++;
+      const pct = [0,25,50,75,100][score];
+      meterBar.style.width = pct + '%';
+      meter.classList.remove('ok','good','great');
+      if (score === 2){ meter.classList.add('ok'); pwdHint.textContent='Mật khẩu tạm ổn.'; }
+      else if (score === 3){ meter.classList.add('good'); pwdHint.textContent='Mật khẩu tốt.'; }
+      else if (score >= 4){ meter.classList.add('great'); pwdHint.textContent='Mật khẩu mạnh.'; }
+      else { pwdHint.textContent='Mật khẩu yếu.'; }
+    });
+  }
+})();
+</script>
+{% endblock %}

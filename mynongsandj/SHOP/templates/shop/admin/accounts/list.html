@@ -1,12 +1,13 @@
 {% extends "shop/admin/base_admin.html" %}
 {% load static %}
-{% block title %}Danh mục · Admin{% endblock %}
-{% block page_title %}Danh mục{% endblock %}
+
+{% block title %}Quản lý tài khoản{% endblock %}
+{% block page_title %}Tài khoản{% endblock %}
 
 {% block content %}
 <style>
-  html, body {height: 100%; overflow: hidden;}
-  .admin-fixed {height: calc(100vh - 0px); display: flex; flex-direction: column; overflow: hidden;}
+  html, body {height:100%; overflow:hidden;}
+  .admin-fixed {height:calc(100vh - 0px); display:flex; flex-direction:column; overflow:hidden;}
   .toolbar-tight {margin-bottom:.5rem!important;}
   .card-body-tight {padding:.5rem 1rem!important;}
   .table-flex {flex:1 1 auto; min-height:0; overflow:hidden;}
@@ -36,6 +37,23 @@
   }
   .searchbar .btn-find:hover {filter:brightness(1.04);transform:translateY(-1px);}
   .btn-reset {border-radius:12px;height:var(--h);margin-left:8px;}
+
+  /* Role pills */
+  .role-pills {display:flex; gap:6px; flex-wrap:wrap;}
+  .role-pill {
+    height:var(--h); line-height:calc(var(--h) - 2px);
+    padding:0 .75rem; border-radius:12px; border:1px solid rgba(0,0,0,.08);
+    background:#fff; color:#374151; text-decoration:none; display:inline-block;
+  }
+  .role-pill.active {background:#059669; color:#fff; border-color:#059669; box-shadow:0 6px 16px rgba(5,150,105,.15);}
+
+  /* Bảng */
+  .table-hover tbody tr:hover {background:#fafcff;}
+  .badge {
+    display:inline-block; padding:.25rem .5rem; border-radius:8px; font-size:.75rem; font-weight:600;
+  }
+  .badge-admin {background:#d1fae5; color:#065f46;}
+  .badge-customer {background:#f3f4f6; color:#374151;}
 
   /* Pagination */
   .pagination-fixed {
@@ -82,11 +100,7 @@
     transition:all .3s ease;
     pointer-events:auto;
   }
-   .alert,
-  .messages,
-  .django-messages {
-    display: none !important;
-  }
+  .alert, .messages, .django-messages { display: none !important; }
   .toast.show {opacity:1; transform:translateY(0);}
 </style>
 
@@ -94,77 +108,93 @@
 
   <!-- Toolbar -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
-    <form id="searchForm" class="d-flex searchbar" method="get" action="" style="min-width:420px">
+    <form id="searchForm" class="d-flex searchbar flex-wrap gap-2" method="get" action="" style="min-width:520px">
       <div class="inputbox">
         <i class="bi bi-search icon"></i>
         <input id="qInput" type="text" name="q" value="{{ q|default_if_none:'' }}"
-               class="form-control" placeholder="Tìm theo tên danh mục…">
+               class="form-control" placeholder="Tìm tên, email, SĐT…">
         <button type="button" class="btn-clear d-none" id="btnClear" aria-label="Xóa tìm">
           <i class="bi bi-x-circle"></i>
         </button>
       </div>
-      <button class="btn btn-find" type="submit">
-        <i class="bi bi-funnel me-1"></i>Tìm
-      </button>
-      <a class="btn btn-light btn-reset" href="{% url 'shop:admin_categories' %}">
-        <i class="bi bi-x-circle me-1"></i>Xóa lọc
-      </a>
+
+      <input type="hidden" name="vaiTro" id="vaiTroInput" value="{{ role|default:'' }}">
+      <div class="role-pills" style="--h:38px">
+        <a href="#" class="role-pill {% if not role %}active{% endif %}" data-role="">Tất cả</a>
+        <a href="#" class="role-pill {% if role == 'admin' %}active{% endif %}" data-role="admin">Admin</a>
+        <a href="#" class="role-pill {% if role == 'customer' %}active{% endif %}" data-role="customer">Customer</a>
+      </div>
+
+      <button class="btn btn-find" type="submit"><i class="bi bi-funnel me-1"></i>Tìm</button>
+      <a class="btn btn-light btn-reset" href="{% url 'shop:admin_accounts' %}"><i class="bi bi-x-circle me-1"></i>Xóa lọc</a>
     </form>
-    <a class="btn btn-success btn-sm" href="{% url 'shop:admin_category_create' %}">+ Thêm danh mục</a>
+
+    <a class="btn btn-success btn-sm" href="{% url 'shop:admin_account_create' %}">+ Thêm tài khoản</a>
   </div>
 
-  <!-- Table -->
+  <!-- Bảng -->
   <div class="card shadow-sm table-flex">
     <div class="card-body card-body-tight">
       <div class="table-responsive">
-        <table class="table align-middle mb-0">
+        <table class="table table-hover align-middle mb-0">
           <thead>
             <tr>
-              <th style="width:18%">ID</th>
-              <th>Tên danh mục</th>
-              <th class="text-end" style="width:18%">Hành động</th>
+              <th>Họ tên</th>
+              <th>Email</th>
+              <th>SĐT</th>
+              <th>Vai trò</th>
+              <th class="text-end" style="width:18%">Thao tác</th>
             </tr>
           </thead>
           <tbody>
           {% if items %}
-            {% for it in items %}
+            {% for u in items %}
             <tr>
-              <td><code class="small">{{ it.id }}</code></td>
-              <td>{{ it.tenDanhMuc }}</td>
+              <td>{{ u.hoTen }}</td>
+              <td>{{ u.email }}</td>
+              <td>{{ u.sdt }}</td>
+              <td>
+                <span class="badge {% if u.vaiTro == 'admin' %}badge-admin{% else %}badge-customer{% endif %}">
+                  {{ u.vaiTro|default:'customer' }}
+                </span>
+              </td>
               <td class="text-end">
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_category_edit' it.id %}">
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:admin_account_edit' u.id %}">
                   <i class="bi bi-pencil"></i> Sửa
                 </a>
-                <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_category_delete' it.id %}">
+                <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_account_delete' u.id %}">
                   <i class="bi bi-trash"></i> Xóa
                 </a>
               </td>
             </tr>
             {% endfor %}
           {% else %}
-            <tr><td colspan="3" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
+            <tr><td colspan="5" class="text-center text-muted py-4">Không có tài khoản.</td></tr>
           {% endif %}
           </tbody>
         </table>
       </div>
 
-      <!-- Pagination -->
+      <!-- Phân trang -->
       <div class="pagination-fixed w-100">
-        <div class="me-3 text-muted small">
-          Trang {{ page }} / {{ total_pages }} • Tổng {{ total }} mục
-        </div>
+        <div class="me-3 text-muted small">Tổng: {{ total }} • Trang {{ page }} / {{ total_pages }}</div>
         <nav aria-label="Pagination">
           <ul class="pagination mb-0">
-            <li class="page-item {% if page|add:'-1' < 1 %}disabled{% endif %}">
-              <a class="page-link" href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">‹</a>
+            <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+              <a class="page-link"
+                 href="?page={{ page|add:'-1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if role %}&vaiTro={{ role|urlencode }}{% endif %}">‹</a>
             </li>
-            {% for p in page_numbers %}
-              <li class="page-item {% if p == page %}active{% endif %}">
-                <a class="page-link" href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}">{{ p }}</a>
-              </li>
-            {% endfor %}
+            {% if page_numbers %}
+              {% for p in page_numbers %}
+                <li class="page-item {% if p == page %}active{% endif %}">
+                  <a class="page-link"
+                     href="?page={{ p }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if role %}&vaiTro={{ role|urlencode }}{% endif %}">{{ p }}</a>
+                </li>
+              {% endfor %}
+            {% endif %}
             <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-              <a class="page-link" href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}">›</a>
+              <a class="page-link"
+                 href="?page={{ page|add:'1' }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if role %}&vaiTro={{ role|urlencode }}{% endif %}">›</a>
             </li>
           </ul>
         </nav>
@@ -182,11 +212,24 @@
   const qInput=document.getElementById('qInput');
   const btnClear=document.getElementById('btnClear');
   const form=document.getElementById('searchForm');
+  const roleInput=document.getElementById('vaiTroInput');
+
   function toggleClear(){btnClear.classList.toggle('d-none',!qInput.value.trim());}
-  btnClear.addEventListener('click',()=>{qInput.value='';toggleClear();form.submit();});
-  qInput.addEventListener('input',toggleClear);
+  if(btnClear){ btnClear.addEventListener('click',()=>{qInput.value='';toggleClear();form.submit();}); }
+  if(qInput){ qInput.addEventListener('input',toggleClear); }
+
+  document.querySelectorAll('.role-pill').forEach(a=>{
+    a.addEventListener('click',e=>{
+      e.preventDefault();
+      roleInput.value = a.dataset.role || '';
+      form.submit();
+    });
+  });
+
   document.addEventListener('keydown',e=>{
-    if(e.key==='/' && document.activeElement!==qInput){e.preventDefault();qInput.focus();qInput.select();}
+    if(e.key==='/' && document.activeElement!==qInput){
+      e.preventDefault();qInput.focus();qInput.select();
+    }
   });
   toggleClear();
 
@@ -203,7 +246,7 @@
   }
   window.showToast=showToast;
 
-  // Render Django messages ra toast
+  // Show Django messages bằng toast
   {% if messages %}
     {% for m in messages %}
       showToast("{{ m|escapejs }}", "{% if 'error' in m.tags %}error{% else %}success{% endif %}");
