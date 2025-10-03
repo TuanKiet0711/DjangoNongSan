@@ -14,15 +14,15 @@
         {% for it in items %}
         <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
           <div class="d-flex align-items-center gap-3">
-            {% if it.hinh %}
-              <img src="{{ MEDIA_URL }}{{ it.hinh }}" style="width:64px;height:64px;object-fit:cover" class="rounded">
+            {% if it.hinh_anh %}
+              <img src="{{ MEDIA_URL }}{{ it.hinh_anh }}" style="width:64px;height:64px;object-fit:cover" class="rounded">
             {% endif %}
             <div>
-              <div class="fw-semibold">{{ it.ten }}</div>
-              <div class="text-muted small">SL: {{ it.soLuong }} × {{ it.donGia|intcomma }}</div>
+              <div class="fw-semibold">{{ it.tenSanPham }}</div>
+              <div class="text-muted small">SL: {{ it.so_luong }} × {{ it.don_gia|intcomma }}</div>
             </div>
           </div>
-          <div class="fw-bold">{{ it.tongTien|intcomma }} đ</div>
+          <div class="fw-bold">{{ it.thanh_tien|intcomma }} đ</div>
         </div>
         {% endfor %}
       </div>
@@ -32,17 +32,36 @@
   <div class="col-lg-4">
     <form class="card" method="post" action="{% url 'shop:place_order' %}">
       {% csrf_token %}
-      {% if is_buy_now %}<input type="hidden" name="buy_now_id" value="{{ buy_now_id }}">{% endif %}
       <div class="card-body">
         <div class="d-flex justify-content-between">
           <div class="text-muted">Tạm tính</div>
-          <div class="fw-semibold">{{ subtotal|intcomma }} đ</div>
+          <div class="fw-semibold">{{ tong_tien|intcomma }} đ</div>
         </div>
         <hr>
+        <div class="mb-2">
+          <label class="form-label">Họ tên</label>
+          <input name="ho_ten" class="form-control" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Số điện thoại</label>
+          <input name="so_dien_thoai" class="form-control" required>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Địa chỉ</label>
+          <textarea name="dia_chi" class="form-control" rows="2" required></textarea>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Ngày giao dự kiến</label>
+          <input type="date" name="ngay_giao" class="form-control">
+        </div>
         <div class="mb-3">
-          <label class="form-label fw-semibold">Phương thức thanh toán</label>
-          <select name="pttt" class="form-select">
-            <option value="cod">COD (thanh toán khi nhận)</option>
+          <label class="form-label">Ghi chú</label>
+          <textarea name="ghi_chu" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Phương thức thanh toán</label>
+          <select name="phuong_thuc_thanh_toan" class="form-select">
+            <option value="COD">COD (thanh toán khi nhận)</option>
             <option value="vi_dien_tu">Ví điện tử / chuyển khoản</option>
           </select>
         </div>
@@ -53,5 +72,6 @@
 </div>
 {% else %}
 <div class="alert alert-info">Không có sản phẩm để đặt.</div>
+<a href="{% url 'shop:sanpham_list' %}" class="btn btn-success">Mua sắm ngay</a>
 {% endif %}
 {% endblock %}
