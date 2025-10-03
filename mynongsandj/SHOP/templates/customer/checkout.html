@@ -1,132 +1,57 @@
 {% extends "customer/base.html" %}
-{% load static %}
 {% load humanize %}
-{% block title %}Thông tin giao hàng{% endblock %}
+
+{% block title %}Thanh toán{% endblock %}
 
 {% block content %}
-<h2 class="mb-3">Thông tin giao hàng</h2>
+<h3 class="mb-3">Xác nhận đơn hàng</h3>
 
-<div class="row g-4">
-  <!-- Form thông tin giao hàng -->
-  <div class="col-lg-5">
-    <div class="card shadow-sm">
+{% if items %}
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card mb-3">
       <div class="card-body">
-        <form method="post" action="{% url 'shop:place_order' %}" class="row g-3">
-          {% csrf_token %}
-
-          <!-- hidden cho mua ngay -->
-          <input type="hidden" name="is_buy_now" value="{{ is_buy_now|default:'false' }}">
-          <input type="hidden" name="buy_now_sanpham_id" value="{{ buy_now_sanpham_id }}">
-          <input type="hidden" name="buy_now_so_luong" value="{{ buy_now_so_luong|default:1 }}">
-
-          <div class="col-12">
-            <label class="form-label">Họ tên người nhận</label>
-            <input type="text" name="ho_ten" class="form-control" value="{{ form.ho_ten.value|default:'' }}">
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Số điện thoại</label>
-            <input type="text" name="so_dien_thoai" class="form-control" value="{{ form.so_dien_thoai.value|default:'' }}">
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Địa chỉ giao hàng</label>
-            <textarea name="dia_chi" class="form-control" rows="3">{{ form.dia_chi.value|default:'' }}</textarea>
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Ngày giao hàng mong muốn</label>
-            <input type="date" name="ngay_giao" class="form-control" min="{{ today|date:'Y-m-d' }}">
-          </div>
-
-          <div class="col-12">
-            <label class="form-label">Ghi chú (tuỳ chọn)</label>
-            <input type="text" name="ghi_chu" class="form-control">
-          </div>
-
-          <div class="col-12">
-            <label class="form-label d-block">Phương thức thanh toán</label>
-
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="phuong_thuc_thanh_toan" value="COD" id="pmCOD" checked>
-              <label class="form-check-label" for="pmCOD">Thanh toán khi nhận hàng (COD)</label>
-            </div>
-
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="phuong_thuc_thanh_toan" value="BANK" id="pmBANK">
-              <label class="form-check-label" for="pmBANK">Chuyển khoản ngân hàng</label>
-            </div>
-
-            <div id="bankInfo" class="alert alert-secondary mt-2" style="display:none">
-              <div class="small mb-1"><b>Hướng dẫn chuyển khoản</b></div>
-              <div class="small">
-                Ngân hàng: Vietcombank – CN TP.HCM<br>
-                Số TK: 0123456789 – Chủ TK: NONG SAN SACH CO., LTD<br>
-                Nội dung: Thanh toan don hang + Họ tên/SĐT
-              </div>
+        {% for it in items %}
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <div class="d-flex align-items-center gap-3">
+            {% if it.hinh %}
+              <img src="{{ MEDIA_URL }}{{ it.hinh }}" style="width:64px;height:64px;object-fit:cover" class="rounded">
+            {% endif %}
+            <div>
+              <div class="fw-semibold">{{ it.ten }}</div>
+              <div class="text-muted small">SL: {{ it.soLuong }} × {{ it.donGia|intcomma }}</div>
             </div>
           </div>
-
-          <div class="col-12 d-flex gap-2">
-            <a href="{% url 'shop:view_cart' %}" class="btn btn-outline-secondary">Quay lại giỏ</a>
-            <button type="submit" class="btn btn-success ms-auto">Xác nhận đặt hàng</button>
-          </div>
-        </form>
+          <div class="fw-bold">{{ it.tongTien|intcomma }} đ</div>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
 
-  <!-- Tóm tắt đơn -->
-  <div class="col-lg-7">
-    <div class="card shadow-sm">
+  <div class="col-lg-4">
+    <form class="card" method="post" action="{% url 'shop:place_order' %}">
+      {% csrf_token %}
+      {% if is_buy_now %}<input type="hidden" name="buy_now_id" value="{{ buy_now_id }}">{% endif %}
       <div class="card-body">
-        <h5 class="card-title mb-3">Tóm tắt đơn</h5>
-        <div class="table-responsive">
-          <table class="table align-middle">
-            <thead>
-              <tr>
-                <th style="width:70px">Ảnh</th>
-                <th>Sản phẩm</th>
-                <th class="text-end">Đơn giá</th>
-                <th class="text-center">SL</th>
-                <th class="text-end">Thành tiền</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for i in items %}
-              <tr>
-                <td>
-                  <img src="{{ MEDIA_URL }}{{ i.hinh_anh }}" style="width:60px;height:60px;object-fit:cover">
-                </td>
-                <td>{{ i.tenSanPham }}</td>
-                <td class="text-end">{{ i.don_gia|intcomma }} đ</td>
-                <td class="text-center">{{ i.so_luong }}</td>
-                <td class="text-end">{{ i.thanh_tien|intcomma }} đ</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th colspan="4" class="text-end">Tổng cộng</th>
-                <th class="text-end">{{ tong_tien|intcomma }} đ</th>
-              </tr>
-            </tfoot>
-          </table>
+        <div class="d-flex justify-content-between">
+          <div class="text-muted">Tạm tính</div>
+          <div class="fw-semibold">{{ subtotal|intcomma }} đ</div>
         </div>
-        <p class="text-muted small mb-0">Giá đã bao gồm VAT (nếu có). Phí vận chuyển tính theo địa chỉ giao hàng.</p>
+        <hr>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Phương thức thanh toán</label>
+          <select name="pttt" class="form-select">
+            <option value="cod">COD (thanh toán khi nhận)</option>
+            <option value="vi_dien_tu">Ví điện tử / chuyển khoản</option>
+          </select>
+        </div>
+        <button class="btn btn-success w-100">Đặt hàng</button>
       </div>
-    </div>
+    </form>
   </div>
 </div>
-
-<script>
-function toggleBankInfo() {
-  const v = document.querySelector('input[name="phuong_thuc_thanh_toan"]:checked')?.value;
-  document.getElementById('bankInfo').style.display = (v === 'BANK') ? 'block' : 'none';
-}
-document.addEventListener('change', (e) => {
-  if (e.target && e.target.name === 'phuong_thuc_thanh_toan') toggleBankInfo();
-});
-document.addEventListener('DOMContentLoaded', toggleBankInfo);
-</script>
+{% else %}
+<div class="alert alert-info">Không có sản phẩm để đặt.</div>
+{% endif %}
 {% endblock %}

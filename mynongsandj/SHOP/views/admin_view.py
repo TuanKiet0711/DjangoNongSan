@@ -2,6 +2,8 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from math import ceil
+from datetime import timedelta
+from django.utils import timezone
 from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo.errors import DuplicateKeyError
@@ -21,11 +23,91 @@ PAGE_SIZE = 6
 # =================== DASHBOARD =================== #
 @admin_required
 def dashboard(request):
+    # KPIs cơ bản
+    total_products = san_pham.count_documents({})
+    total_categories = danh_muc.count_documents({})
+    total_orders = don_hang.count_documents({})
+    total_accounts = tai_khoan.count_documents({})
+
+    # Doanh thu
+    now = timezone.localtime(timezone.now())
+    start_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_month = start_today.replace(day=1)
+    tz_name = "Asia/Ho_Chi_Minh"
+    ok_status = ["da_xac_nhan", "dang_giao", "hoan_thanh"]  # coi như đã bán
+
+    def _sum(match):
+        pipe = [
+            {"$match": match},
+            {"$group": {"_id": None, "revenue": {"$sum": "$tongTien"}, "orders": {"$sum": 1}}},
+        ]
+        data = list(don_hang.aggregate(pipe))
+        if data:
+            return int(data[0]["revenue"]), int(data[0]["orders"])
+        return 0, 0
+
+    revenue_today, orders_today = _sum({"trangThai": {"$in": ok_status}, "ngayTao": {"$gte": start_today}})
+    revenue_month, orders_month = _sum({"trangThai": {"$in": ok_status}, "ngayTao": {"$gte": start_month}})
+
+    # ---- Revenue by DAY (14 d) ----
+    day_from = start_today - timedelta(days=13)
+    day_pipe = [
+        {"$match": {"trangThai": {"$in": ok_status}, "ngayTao": {"$gte": day_from}}},
+        {"$group": {
+            "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$ngayTao", "timezone": tz_name}},
+            "revenue": {"$sum": "$tongTien"}
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    day_map = {d["_id"]: int(d["revenue"]) for d in don_hang.aggregate(day_pipe)}
+    daily_labels, daily_values = [], []
+    for i in range(14):
+        d = (day_from + timedelta(days=i)).strftime("%Y-%m-%d")
+        daily_labels.append(d)
+        daily_values.append(day_map.get(d, 0))
+
+    # ---- Revenue by MONTH (12 m) ----
+    def month_add(dt, k):
+        m = dt.month - 1 + k
+        y = dt.year + m // 12
+        m = m % 12 + 1
+        return dt.replace(year=y, month=m, day=1)
+
+    first_this_month = start_month
+    month_start = month_add(first_this_month, -11)
+
+    mon_pipe = [
+        {"$match": {"trangThai": {"$in": ok_status}, "ngayTao": {"$gte": month_start}}},
+        {"$group": {
+            "_id": {"$dateToString": {"format": "%Y-%m", "date": "$ngayTao", "timezone": tz_name}},
+            "revenue": {"$sum": "$tongTien"}
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    mon_map = {d["_id"]: int(d["revenue"]) for d in don_hang.aggregate(mon_pipe)}
+    monthly_labels, monthly_values = [], []
+    cur_m = month_start
+    for _ in range(12):
+        label = cur_m.strftime("%Y-%m")
+        monthly_labels.append(label)
+        monthly_values.append(mon_map.get(label, 0))
+        cur_m = month_add(cur_m, 1)
+
     ctx = {
-        "total_products": san_pham.count_documents({}),
-        "total_categories": danh_muc.count_documents({}),
-        "total_orders": don_hang.count_documents({}),
-        "total_accounts": tai_khoan.count_documents({}),
+        "total_products": total_products,
+        "total_categories": total_categories,
+        "total_orders": total_orders,
+        "total_accounts": total_accounts,
+
+        "revenue_today": revenue_today,
+        "revenue_month": revenue_month,
+        "orders_today": orders_today,
+        "orders_month": orders_month,
+
+        "daily_labels": daily_labels,
+        "daily_values": daily_values,
+        "monthly_labels": monthly_labels,
+        "monthly_values": monthly_values,
     }
     return render(request, "shop/admin/dashboard.html", ctx)
 
@@ -35,6 +117,7 @@ def _safe_oid(s):
         return ObjectId(s)
     except (InvalidId, TypeError):
         return None
+
 @admin_required
 def categories_list(request):
     q = (request.GET.get("q") or "").strip()
@@ -64,7 +147,6 @@ def categories_list(request):
         "page_numbers": list(range(1, total_pages + 1)),
         "start_index": skip + 1,
     }
-    # 👇 ĐÚNG THƯ MỤC: admin/categories/list.html
     return render(request, "shop/admin/categories/list.html", ctx)
 
 @admin_required
@@ -72,7 +154,6 @@ def category_create(request):
     col, storage_field = _col_danhmuc()
 
     if request.method == "GET":
-        # 👇 admin/categories/create.html
         return render(request, "shop/admin/categories/create.html")
 
     name = (request.POST.get("tenDanhMuc") or "").strip()
@@ -102,7 +183,6 @@ def category_edit(request, id):
         return redirect("shop:admin_categories")
 
     if request.method == "GET":
-        # 👇 admin/categories/edit.html
         return render(request, "shop/admin/categories/edit.html",
                       {"id": id, "tenDanhMuc": dm.get(storage_field, "")})
 
@@ -132,7 +212,6 @@ def category_delete(request, id):
     if request.method == "GET":
         dm = col.find_one({"_id": oid}) or {}
         name = dm.get("tenDanhMuc") or dm.get("ten_danh_muc") or ""
-        # 👇 admin/categories/delete.html
         return render(request, "shop/admin/categories/delete.html",
                       {"id": id, "tenDanhMuc": name})
 
@@ -142,13 +221,11 @@ def category_delete(request, id):
     else:
         messages.success(request, "Đã xoá danh mục.")
     return redirect("shop:admin_categories")
+
 # =================== ACCOUNTS (ADMIN) =================== #
 from .taikhoan_view import _safe_user
-from ..database import taikhoan as tai_khoan
 
-# SHOP/views/admin_view.py
-
-PAGE_SIZE = 6  # bạn đã có ở trên, tận dụng luôn
+PAGE_SIZE = 6
 
 @admin_required
 def accounts_list(request):
@@ -156,7 +233,7 @@ def accounts_list(request):
     role = (request.GET.get("vaiTro") or "").strip()
     page = max(int(request.GET.get("page", 1)), 1)
 
-    page_size = PAGE_SIZE  # 👈 đổi từ 10 thành 6 (dùng hằng có sẵn)
+    page_size = PAGE_SIZE
 
     filter_ = {}
     if q:
@@ -217,7 +294,6 @@ def account_create(request):
 
 @admin_required
 def account_edit(request, id):
-    from bson import ObjectId
     try:
         oid = ObjectId(id)
     except Exception:
@@ -230,7 +306,13 @@ def account_edit(request, id):
         return redirect("shop:admin_accounts")
 
     if request.method == "GET":
-        return render(request, "shop/admin/accounts/edit.html", {"account": _safe_user(acc)})
+        return render(request, "shop/admin/accounts/edit.html", {"account": {
+            "id": str(acc["_id"]),
+            "hoTen": acc.get("hoTen", ""),
+            "email": acc.get("email", ""),
+            "sdt": acc.get("sdt", ""),
+            "vaiTro": acc.get("vaiTro", "customer"),
+        }})
 
     hoTen = (request.POST.get("hoTen") or "").strip()
     email = (request.POST.get("email") or "").strip().lower()
@@ -242,7 +324,6 @@ def account_edit(request, id):
     if matKhau:
         update["matKhau"] = matKhau
 
-    # check email trùng
     if tai_khoan.find_one({"email": email, "_id": {"$ne": oid}}):
         messages.error(request, "Email đã tồn tại.")
         return redirect("shop:admin_account_edit", id=id)
@@ -254,7 +335,6 @@ def account_edit(request, id):
 
 @admin_required
 def account_delete(request, id):
-    from bson import ObjectId
     try:
         oid = ObjectId(id)
     except Exception:
@@ -267,7 +347,13 @@ def account_delete(request, id):
         return redirect("shop:admin_accounts")
 
     if request.method == "GET":
-        return render(request, "shop/admin/accounts/delete.html", {"account": _safe_user(acc)})
+        return render(request, "shop/admin/accounts/delete.html", {"account": {
+            "id": str(acc["_id"]),
+            "hoTen": acc.get("hoTen", ""),
+            "email": acc.get("email", ""),
+            "sdt": acc.get("sdt", ""),
+            "vaiTro": acc.get("vaiTro", "customer"),
+        }})
 
     tai_khoan.delete_one({"_id": oid})
     messages.success(request, "Đã xoá tài khoản.")

@@ -1,9 +1,10 @@
 {% extends "shop/admin/base_admin.html" %}
+{% load humanize %}
 {% block title %}Bảng điều khiển · Admin{% endblock %}
 {% block page_title %}Bảng điều khiển{% endblock %}
 
 {% block content %}
-<!-- Quick tiles (thấp gọn) -->
+<!-- Quick tiles -->
 <div class="row g-3 mb-3">
   <div class="col-6 col-lg-3">
     <div class="card tile">
@@ -51,7 +52,49 @@
   </div>
 </div>
 
-<!-- Action cards (compact) -->
+<!-- Revenue tiles -->
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-6">
+    <div class="card tile">
+      <div class="card-body py-3">
+        <div class="text-muted small">Doanh thu hôm nay</div>
+        <div class="display-6 fw-bold">{{ revenue_today|intcomma }} đ</div>
+        <div class="text-muted">Đơn: {{ orders_today|intcomma }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-6">
+    <div class="card tile">
+      <div class="card-body py-3">
+        <div class="text-muted small">Doanh thu tháng</div>
+        <div class="display-6 fw-bold">{{ revenue_month|intcomma }} đ</div>
+        <div class="text-muted">Đơn: {{ orders_month|intcomma }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card card-hover">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">Doanh thu theo ngày (14 ngày)</h6>
+        <canvas id="chartDay"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card card-hover">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3">Doanh thu theo tháng (12 tháng)</h6>
+        <canvas id="chartMonth"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Action cards -->
 <div class="row g-3">
   <div class="col-md-6 col-lg-3">
     <div class="card card-hover card-compact h-100">
@@ -101,4 +144,28 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<script>
+(function(){
+  const dailyLabels = {{ daily_labels|safe }};
+  const dailyValues = {{ daily_values|safe }};
+  const monthlyLabels = {{ monthly_labels|safe }};
+  const monthlyValues = {{ monthly_values|safe }};
+
+  new Chart(document.getElementById('chartDay'), {
+    type: 'line',
+    data: { labels: dailyLabels, datasets: [{ label: 'VND', data: dailyValues, tension:.3 }] },
+    options: { responsive:true, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  new Chart(document.getElementById('chartMonth'), {
+    type: 'bar',
+    data: { labels: monthlyLabels, datasets: [{ label: 'VND', data: monthlyValues }] },
+    options: { responsive:true, scales:{ y:{ beginAtZero:true } } }
+  });
+})();
+</script>
 {% endblock %}
