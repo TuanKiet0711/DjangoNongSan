@@ -1,0 +1,75 @@
+{% extends 'customer/base.html' %}
+{% block content %}
+<h2 class="mb-3">Chi tiết đơn hàng</h2>
+<div id="order-detail"></div>
+
+<script>
+async function fetchProductInfo(id) {
+  try {
+    const res = await fetch(`/api/products/${id}/`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    return {
+      name: data.ten || data.name || "(Không tên)",
+      img: data.anh || data.hinhAnh || data.image_url || (data.hinhAnhs && data.hinhAnhs[0]) || ""
+    };
+  } catch { return {}; }
+}
+
+async function loadOrder() {
+  const res = await fetch(`/api/orders/{{ order_id }}/`, {credentials: 'same-origin'});
+  if (res.status === 401) return location.href = "{% url 'shop:auth_login_page' %}";
+  const o = await res.json();
+  const wrap = document.getElementById('order-detail');
+  if (o.error) {
+    wrap.innerHTML = `<div class="alert alert-danger">${o.error}</div>`;
+    return;
+  }
+
+  let itemsHTML = '';
+  for (const it of o.items) {
+    const p = await fetchProductInfo(it.sanPhamId);
+    itemsHTML += `
+      <tr>
+        <td>
+          <div class="d-flex align-items-center">
+            <img src="${p.img || '/static/img/no-image.png'}" width="50" height="50" class="me-2 rounded border">
+            <span>${p.name}</span>
+          </div>
+        </td>
+        <td class="text-end">${it.donGia.toLocaleString()} đ</td>
+        <td class="text-center">${it.soLuong}</td>
+        <td class="text-end">${it.thanhTien.toLocaleString()} đ</td>
+      </tr>`;
+  }
+
+  wrap.innerHTML = `
+    <div class="card p-3 shadow-sm rounded-3">
+      <h5 class="mb-3">Thông tin đơn hàng</h5>
+      <p><b>Mã đơn:</b> ${o.id}</p>
+      <p><b>Trạng thái:</b> ${o.trangThai}</p>
+      <p><b>Phương thức thanh toán:</b> ${o.phuongThucThanhToan}</p>
+      <p><b>Tổng tiền:</b> ${o.tongTien.toLocaleString()} đ</p>
+      <hr>
+      <h5>Thông tin giao hàng</h5>
+      <p><b>Họ tên:</b> ${o.shipping.hoTen}</p>
+      <p><b>Điện thoại:</b> ${o.shipping.soDienThoai}</p>
+      <p><b>Địa chỉ:</b> ${o.shipping.diaChi}</p>
+      <p><b>Ngày giao:</b> ${o.shipping.ngayGiao}</p>
+      <p><b>Ghi chú:</b> ${o.shipping.ghiChu}</p>
+      <hr>
+      <h5>Sản phẩm</h5>
+      <table class="table table-bordered align-middle">
+        <thead><tr>
+          <th>Tên sản phẩm</th>
+          <th class="text-end">Đơn giá</th>
+          <th class="text-center">SL</th>
+          <th class="text-end">Thành tiền</th>
+        </tr></thead>
+        <tbody>${itemsHTML}</tbody>
+      </table>
+    </div>`;
+}
+loadOrder();
+</script>
+{% endblock %}

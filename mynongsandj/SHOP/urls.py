@@ -15,6 +15,7 @@ from .views import (
     donhang,                 # module views/donhang.py (UI/flow đơn hàng)
     donhang_view as dv,      # module views/donhang_view.py (API đơn hàng)
 )
+from .views.donhang import checkout_page, my_orders_page, my_order_detail
 
 app_name = "shop"
 
@@ -27,12 +28,15 @@ urlpatterns = [
 
     path("cart/",                cart_ui.view_cart,         name="view_cart"),
 
-    path("checkout/",            donhang.checkout_view,     name="checkout"),
-    path("orders/",              donhang.orders_index,      name="orders_index"),
-    path("orders/<str:order_id>/", donhang.order_details,   name="order_details"),
-    path("orders/cancel/",       donhang.cancel_order,      name="cancel_order"),
-    path("orders/place/",        donhang.place_order,       name="place_order"),
-
+    # path("orders/", donhang.orders_index, name="orders_index"),
+    # path("orders/<str:order_id>/", donhang.order_details, name="order_details"),
+    # path("checkout/", donhang.checkout_view, name="checkout_view"),
+    # path("orders/cancel/", donhang.cancel_order, name="cancel_order"),
+    # path("orders/place/", donhang.place_order, name="place_order"),
+      # Trang khách hàng
+    path('checkout/', checkout_page, name='customer_checkout'),
+    path('don-hang/', my_orders_page, name='customer_orders'),
+    path('don-hang/<str:id>/', my_order_detail, name='customer_order_detail'),
     # --------- Danh mục ---------
     path("danh-muc/",                    dm.list_danh_muc,   name="danh_muc_list"),
     path("danh-muc/create/",             dm.create_danh_muc, name="danh_muc_create"),
@@ -45,10 +49,9 @@ urlpatterns = [
     path("api/products/<str:id>/",       spv.product_detail, name="api_product_detail"),
 
     # --------- API Đơn hàng ---------
-    path("api/orders/",                  dv.orders_list,     name="api_orders_list"),
-    path("api/orders/create/",           dv.order_create,    name="api_order_create"),
-    path("api/orders/<str:id>/",         dv.order_detail,    name="api_order_detail"),
-
+    path("api/orders/", dv.orders_list, name="api_orders_list"),
+    path("api/orders/checkout", dv.orders_checkout, name="api_orders_checkout"),
+    path("api/orders/<str:id>/", dv.order_detail, name="api_order_detail"),
     # --------- ✅ API Giỏ hàng (khớp template JS) ---------
     path("api/cart/add/<str:sp_id>/",    cart.api_add_to_cart, name="api_add_to_cart"),
     path("api/cart/badge/",              cart.api_cart_badge,  name="api_cart_badge"),

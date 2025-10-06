@@ -92,7 +92,7 @@
             <p class="card-desc small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
             <div class="price-tag mb-3">{{ sp.gia|intcomma }} VNĐ</div>
             <div class="mt-auto d-flex flex-column gap-2">
-              <a href="{% url 'shop:checkout' %}?buy_now={{ sp.id }}" class="btn btn-buy-now btn-pill w-100">
+              <a href="{% url 'shop:customer_checkout' %}?buy_now={{ sp.id }}" class="btn btn-buy-now btn-pill w-100">
                 <i class="bi bi-lightning-charge-fill me-1"></i> Mua ngay
               </a>
               <button type="button" class="btn btn-add-cart btn-pill w-100" data-id="{{ sp.id }}">

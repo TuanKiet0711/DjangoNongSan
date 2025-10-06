@@ -7,7 +7,7 @@
 {% block content %}
 <style>
   :root{--green:#2e7d32;--green-700:#1b5e20;--blue:#3b78ff;--orange:#ff8f00;--muted:#6c757d;}
-  .page-products{padding-top:2.5rem;padding-bottom:2rem}
+  .page-products{padding-top:2.2rem;padding-bottom:2rem}
   .product-card{border:1px solid #e9efe8;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.06);overflow:hidden;background:#fff;transition:.22s ease;}
   .product-card:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(0,0,0,.08)}
   .product-img{aspect-ratio:1/1;object-fit:cover;height:300px;border-bottom:1px solid #f2f5f3}
@@ -22,7 +22,8 @@
   .btn-view-detail:hover{background:var(--blue);color:#fff;transform:translateY(-1px)}
   .card-title>a{color:#1f2937;text-decoration:none}
   .card-title>a:hover{color:var(--green)}
-  .card-desc{color:var(--muted)}
+  .card-desc{color:var(--muted);min-height:2.5em}
+  .searchbar{display:flex;justify-content:center}
   .searchbar .form-control{height:42px;border-radius:12px}
   .searchbar .btn-find{height:42px;background:linear-gradient(180deg,#4f8cff,#3b78ff);color:#fff;border:none;border-radius:12px;font-weight:700;box-shadow:0 8px 16px rgba(60,120,240,.18);}
   .searchbar .btn-find:hover{filter:brightness(1.04);transform:translateY(-1px)}
@@ -38,54 +39,56 @@
 
 <section class="page-products">
   <div class="container">
-    <div class="mb-3 d-flex align-items-center gap-2">
+
+    <!-- Header -->
+    <div class="mb-3 d-flex align-items-center gap-2 justify-content-center">
       <i class="bi bi-bag text-success" style="font-size:1.4rem"></i>
       <h2 class="h3 mb-0 fw-bold text-success">Danh sách sản phẩm</h2>
     </div>
 
-    <!-- lọc -->
-  <form id="filterForm" method="get" class="searchbar row g-2 align-items-end mb-4">
-  <div class="col-12 col-md-3">
-    <label class="form-label mb-1">Từ khóa</label>
-    <input type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control" placeholder="Nhập tên hoặc mô tả...">
-  </div>
-
-  <div class="col-6 col-md-2">
-    <label class="form-label mb-1">Danh mục</label>
-    <div class="cat-wrap">
-      <input type="hidden" name="cat" id="catHidden" value="{{ cat_selected|default:'' }}">
-      <button type="button" id="catBtn" class="cat-btn">
-        <span id="catLabel" class="text-truncate" style="max-width:calc(100% - 1rem)">Tất cả</span>
-        <span>▾</span>
-      </button>
-      <div id="catMenu" class="cat-menu">
-        <a class="cat-item {% if not cat_selected %}active{% endif %}" data-id="">Tất cả</a>
-        {% for c in categories %}
-          <a class="cat-item {% if c.id == cat_selected %}active{% endif %}" data-id="{{ c.id }}">{{ c.tenDanhMuc }}</a>
-        {% endfor %}
+    <!-- FILTER BAR (centered) -->
+    <form id="filterForm" method="get" class="searchbar row g-2 align-items-end mb-4">
+      <div class="col-12 col-md-4">
+        <label class="form-label mb-1">Từ khóa</label>
+        <input type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control" placeholder="Nhập tên hoặc mô tả...">
       </div>
-    </div>
-  </div>
 
-  <div class="col-3 col-md-2">
-    <label class="form-label mb-1">Giá từ</label>
-    <input type="text" name="min" id="minPrice" value="{{ min_selected|default_if_none:''|intcomma }}" class="form-control" placeholder="0">
-  </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label mb-1">Danh mục</label>
+        <div class="cat-wrap">
+          <input type="hidden" name="cat" id="catHidden" value="{{ cat_selected|default:'' }}">
+          <button type="button" id="catBtn" class="cat-btn">
+            <span id="catLabel" class="text-truncate" style="max-width:calc(100% - 1rem)">Tất cả</span>
+            <span>▾</span>
+          </button>
+          <div id="catMenu" class="cat-menu">
+            <a class="cat-item {% if not cat_selected %}active{% endif %}" data-id="">Tất cả</a>
+            {% for c in categories %}
+              <a class="cat-item {% if c.id == cat_selected %}active{% endif %}" data-id="{{ c.id }}">{{ c.tenDanhMuc }}</a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
 
-  <div class="col-3 col-md-2">
-    <label class="form-label mb-1">Đến</label>
-    <input type="text" name="max" id="maxPrice" value="{{ max_selected|default_if_none:''|intcomma }}" class="form-control" placeholder="∞">
-  </div>
+      <div class="col-3 col-md-2">
+        <label class="form-label mb-1">Giá từ</label>
+        <input type="text" name="min" id="minPrice" value="{{ min_selected|default_if_none:''|intcomma }}" class="form-control" placeholder="0">
+      </div>
 
-  <div class="col-auto d-grid">
-    <button class="btn btn-find" type="submit"><i class="bi bi-funnel me-1"></i>Lọc</button>
-  </div>
-  <div class="col-auto d-grid">
-    <a href="{% url 'shop:sanpham_list' %}" class="btn btn-reset btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Xóa lọc</a>
-  </div>
-</form>
+      <div class="col-3 col-md-2">
+        <label class="form-label mb-1">Đến</label>
+        <input type="text" name="max" id="maxPrice" value="{{ max_selected|default_if_none:''|intcomma }}" class="form-control" placeholder="∞">
+      </div>
 
-    <!-- lưới sản phẩm -->
+      <div class="col-auto d-grid">
+        <button class="btn btn-find" type="submit"><i class="bi bi-funnel me-1"></i>Lọc</button>
+      </div>
+      <div class="col-auto d-grid">
+        <a href="{% url 'shop:sanpham_list' %}" class="btn btn-reset btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Xóa lọc</a>
+      </div>
+    </form>
+
+    <!-- GRID -->
     <div class="row g-4">
       {% for sp in products %}
       <div class="col-6 col-md-4 col-lg-3">
@@ -105,12 +108,16 @@
             <p class="card-desc small mb-2">{{ sp.mo_ta|default_if_none:""|truncatechars:80 }}</p>
             <div class="price-tag mb-3">{{ sp.gia|intcomma }} VNĐ</div>
             <div class="mt-auto d-flex flex-column gap-2">
-              <a href="{% url 'shop:checkout' %}?buy_now={{ sp.id }}" class="btn btn-buy-now btn-pill w-100">
+              <!-- BUY NOW: mặc định đi checkout để chắc chắn chạy -->
+              <a href="{% url 'shop:customer_checkout' %}?buy_now={{ sp.id }}" class="btn btn-buy-now btn-pill w-100">
                 <i class="bi bi-lightning-charge-fill me-1"></i> Mua ngay
               </a>
+
+              <!-- ADD TO CART -->
               <button type="button" class="btn btn-add-cart btn-pill w-100" data-id="{{ sp.id }}" data-name="{{ sp.ten }}">
                 <i class="bi bi-bag-plus me-1"></i> Thêm vào giỏ
               </button>
+
               <a href="{% url 'shop:product_detail' sp.id %}" class="btn btn-view-detail btn-pill w-100">
                 <i class="bi bi-eye me-1"></i> Xem chi tiết
               </a>
@@ -128,6 +135,7 @@
   </div>
 </section>
 
+<!-- Toasts -->
 <div class="position-fixed top-0 end-0 p-3" style="z-index:1100">
   <div id="cartToastSuccess" class="toast text-bg-success border-0">
     <div class="d-flex">
@@ -149,28 +157,96 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  // toasts
   const toastSuccess = new bootstrap.Toast(document.getElementById('cartToastSuccess'), {delay:2000});
   const toastError   = new bootstrap.Toast(document.getElementById('cartToastError'),   {delay:2000});
-  function getCookie(name){let cookieValue=null;if(document.cookie&&document.cookie!==''){const cookies=document.cookie.split(';');for(let cookie of cookies){cookie=cookie.trim();if(cookie.substring(0,name.length+1)===(name+'=')){cookieValue=decodeURIComponent(cookie.substring(name.length+1));break;}}}return cookieValue;}
+
+  // csrf
+  function getCookie(name){
+    let v=null;
+    if(document.cookie && document.cookie!==''){
+      const cookies=document.cookie.split(';');
+      for(let c of cookies){ c=c.trim(); if(c.substring(0,name.length+1)===(name+'=')){ v=decodeURIComponent(c.substring(name.length+1)); break; } }
+    }
+    return v;
+  }
   const CSRF=getCookie('csrftoken');
 
   // dropdown danh mục
-  const catBtn=document.getElementById('catBtn'),catMenu=document.getElementById('catMenu'),catHidden=document.getElementById('catHidden'),catLabel=document.getElementById('catLabel');
-  function setCatLabel(){if(!catHidden.value)catLabel.textContent='Tất cả';else{const active=catMenu.querySelector(`.cat-item[data-id="${CSS.escape(catHidden.value)}"]`);catLabel.textContent=active?active.textContent.trim():'Tất cả';}}
-  setCatLabel();
-  catBtn.addEventListener('click',()=>catMenu.classList.toggle('show'));
-  catMenu.addEventListener('click',e=>{const item=e.target.closest('.cat-item');if(!item)return;e.preventDefault();catMenu.querySelectorAll('.cat-item.active').forEach(x=>x.classList.remove('active'));item.classList.add('active');catHidden.value=item.dataset.id||'';setCatLabel();catMenu.classList.remove('show');});
-  document.addEventListener('click',e=>{if(!catMenu.contains(e.target)&&!catBtn.contains(e.target))catMenu.classList.remove('show');});
+  const catBtn=document.getElementById('catBtn'),catMenu=document.getElementById('catMenu'),
+        catHidden=document.getElementById('catHidden'),catLabel=document.getElementById('catLabel');
+  function setCatLabel(){
+    if(!catHidden.value) catLabel.textContent='Tất cả';
+    else{
+      const active=catMenu.querySelector(`.cat-item[data-id="${CSS.escape(catHidden.value)}"]`);
+      catLabel.textContent=active?active.textContent.trim():'Tất cả';
+    }
+  }
+  if(catBtn && catMenu){ setCatLabel(); catBtn.addEventListener('click',()=>catMenu.classList.toggle('show'));
+    catMenu.addEventListener('click',e=>{
+      const item=e.target.closest('.cat-item'); if(!item) return; e.preventDefault();
+      catMenu.querySelectorAll('.cat-item.active').forEach(x=>x.classList.remove('active'));
+      item.classList.add('active'); catHidden.value=item.dataset.id||''; setCatLabel(); catMenu.classList.remove('show');
+    });
+    document.addEventListener('click',e=>{ if(!catMenu.contains(e.target) && !catBtn.contains(e.target)) catMenu.classList.remove('show'); });
+  }
 
   // format giá
   const minInput=document.getElementById('minPrice'),maxInput=document.getElementById('maxPrice');
-  const formatComma=s=>{const clean=(s||'').replace(/[^\d]/g,'');if(!clean)return'';return clean.replace(/\B(?=(\d{3})+(?!\d))/g,',');};
-  const handlePriceInput=el=>{const val=el.value;const f=formatComma(val);if(f!==val){el.value=f;try{el.setSelectionRange(f.length,f.length);}catch(_){}}};
-  [minInput,maxInput].forEach(inp=>{if(!inp)return;inp.value=formatComma(inp.value);inp.addEventListener('input',()=>handlePriceInput(inp));inp.addEventListener('keypress',e=>{if(!/\d/.test(e.key)&&!['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key))e.preventDefault();});inp.addEventListener('blur',()=>inp.value=formatComma(inp.value));});
-  document.getElementById('filterForm').addEventListener('submit',()=>{if(minInput)minInput.value=minInput.value.replace(/[^\d]/g,'');if(maxInput)maxInput.value=maxInput.value.replace(/[^\d]/g,'');});
+  const fmt=s=>{const clean=(s||'').replace(/[^\d]/g,''); if(!clean) return ''; return clean.replace(/\B(?=(\d{3})+(?!\d))/g,',');};
+  const onFmt=el=>{const v=el.value, f=fmt(v); if(f!==v){ el.value=f; try{el.setSelectionRange(f.length,f.length);}catch(_){}}};
+  [minInput,maxInput].forEach(inp=>{
+    if(!inp) return;
+    inp.value=fmt(inp.value);
+    inp.addEventListener('input',()=>onFmt(inp));
+    inp.addEventListener('keypress',e=>{
+      if(!/\d/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'].includes(e.key)) e.preventDefault();
+    });
+    inp.addEventListener('blur',()=>inp.value=fmt(inp.value));
+  });
+  document.getElementById('filterForm').addEventListener('submit',()=>{
+    if(minInput) minInput.value=minInput.value.replace(/[^\d]/g,'');
+    if(maxInput) maxInput.value=maxInput.value.replace(/[^\d]/g,'');
+  });
 
-  // thêm vào giỏ
-  document.querySelectorAll('.btn-add-cart').forEach(btn=>{btn.addEventListener('click',async e=>{e.preventDefault();const id=(btn.dataset.id||'').trim();if(!id)return;const url="{% url 'shop:api_add_to_cart' sp_id='SPID' %}".replace('SPID',id);try{const res=await fetch(url,{method:"POST",headers:{"X-CSRFToken":CSRF,"Accept":"application/json"},credentials:"same-origin"});const data=await res.json().catch(()=>({}));if(res.ok&&data.success){toastSuccess.show();}else if(res.status===401){window.location.href="{% url 'shop:auth_login_page' %}";}else{toastError.show();console.error(res.status,data);}}catch(err){toastError.show();console.error(err);}});});
+  // Add to cart: ưu tiên POST /api/cart/items/ (JSON). Fallback: /api/cart/add/<id>/ (form).
+  async function addToCart(productId, qty = 1) {
+  const res = await fetch(`/api/cart/add/${productId}/`, {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': CSRF,
+      'Accept': 'application/json'
+    },
+    credentials: 'same-origin',
+    body: new URLSearchParams({ so_luong: String(qty) })
+  });
+
+  if (res.status === 401) {
+    window.location.href = "{% url 'shop:auth_login_page' %}";
+    return null;
+  }
+  if (!res.ok) throw new Error('add_to_cart_failed');
+  return await res.json();
+}
+
+
+  // Gắn sự kiện nút "Thêm vào giỏ"
+  document.querySelectorAll('.btn-add-cart').forEach(btn=>{
+    btn.addEventListener('click', async e=>{
+      e.preventDefault();
+      const id=(btn.dataset.id||'').trim(); if(!id) return;
+      try{
+        const data = await addToCart(id, 1);
+        if(data && (data.success || data.id || data.count>=0)) toastSuccess.show();
+        else throw new Error('bad_response');
+      }catch(_){
+        if(_.message==='not_authenticated' || _.status===401){ window.location.href="{% url 'shop:auth_login_page' %}"; return; }
+        toastError.show();
+      }
+    });
+  });
+
+
 });
 </script>
 {% endblock %}

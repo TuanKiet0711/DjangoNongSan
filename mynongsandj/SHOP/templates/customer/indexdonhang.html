@@ -1,72 +1,38 @@
-{% extends "customer/base.html" %}
-{% load humanize %}
-
-{% block title %}Đơn hàng của tôi{% endblock %}
-
+{% extends 'customer/base.html' %}
 {% block content %}
-<h3 class="mb-3">Đơn hàng của tôi</h3>
+<h2 class="mb-3">Đơn hàng của tôi</h2>
+<div id="orders"></div>
 
-{% if donhangs %}
-<div class="table-responsive">
-  <table class="table align-middle">
-    <thead class="table-light">
-      <tr>
-        <th>Mã</th>
-        <th>Sản phẩm</th>
-        <th class="text-end">SL</th>
-        <th class="text-end">Đơn giá</th>
-        <th class="text-end">Tổng</th>
-        <th>Trạng thái</th>
-        <th>Ngày</th>
-        <th class="text-end"></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for o in donhangs %}
-      <tr>
-        <td class="text-muted small">{{ o.ma_don_hang }}</td>
-        <td>
-          <div class="d-flex align-items-center gap-2">
-            {% if o.hinh_anh %}
-              <img src="{{ MEDIA_URL }}{{ o.hinh_anh }}" style="width:44px;height:44px;object-fit:cover" class="rounded">
-            {% endif %}
-            <div>{{ o.ten_san_pham }}</div>
-          </div>
-        </td>
-        <td class="text-end">{{ o.so_luong }}</td>
-        <td class="text-end">{{ o.don_gia|intcomma }}</td>
-        <td class="text-end fw-semibold">{{ o.tong_tien|intcomma }}</td>
-        <td>
-          {% with s=o.trang_thai %}
-          <span class="badge
-            {% if s == 'cho_xu_ly' %} text-bg-secondary
-            {% elif s == 'da_xac_nhan' %} text-bg-info
-            {% elif s == 'dang_giao' %} text-bg-warning
-            {% elif s == 'hoan_thanh' %} text-bg-success
-            {% elif s == 'da_huy' or s == 'huy' %} text-bg-danger
-            {% else %} text-bg-light{% endif %}">
-            {{ s|title }}
-          </span>
-          {% endwith %}
-        </td>
-        <td>{{ o.ngay_tao|date:"d/m/Y H:i" }}</td>
-        <td class="text-end">
-          <a class="btn btn-sm btn-outline-primary" href="{% url 'shop:order_details' o.id %}">Chi tiết</a>
-          {% if o.trang_thai == 'cho_xu_ly' %}
-          <form class="d-inline" method="post" action="{% url 'shop:cancel_order' %}">
-            {% csrf_token %}
-            <input type="hidden" name="id" value="{{ o.id }}">
-            <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Hủy đơn này?')">Hủy</button>
-          </form>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
-{% else %}
-  <div class="alert alert-info">Bạn chưa có đơn hàng nào.</div>
-  <a href="{% url 'shop:sanpham_list' %}" class="btn btn-success">Mua sắm ngay</a>
-{% endif %}
+<script>
+async function loadOrders() {
+  const res = await fetch('/api/orders/', {credentials: 'same-origin'});
+  if (res.status === 401) return location.href = "{% url 'shop:auth_login_page' %}";
+  const data = await res.json();
+  const list = data.items || [];
+  const wrap = document.getElementById('orders');
+  if (!list.length) {
+    wrap.innerHTML = '<div class="alert alert-info">Bạn chưa có đơn hàng nào.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="table table-striped align-middle">
+      <thead><tr>
+        <th>Mã đơn</th><th class="text-end">Tổng tiền</th>
+        <th>Trạng thái</th><th>Ngày tạo</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${list.map(o => `
+          <tr>
+            <td>${o.id}</td>
+            <td class="text-end">${o.tongTien.toLocaleString()} đ</td>
+            <td>${o.trangThai}</td>
+            <td>${new Date(o.ngayTao).toLocaleString()}</td>
+            <td><a href="/don-hang/${o.id}/" class="btn btn-sm btn-primary">Chi tiết</a></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+loadOrders();
+</script>
 {% endblock %}

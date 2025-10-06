@@ -1,77 +1,65 @@
-{% extends "customer/base.html" %}
-{% load humanize %}
-
-{% block title %}Thanh toán{% endblock %}
-
+{% extends 'customer/base.html' %}
 {% block content %}
-<h3 class="mb-3">Xác nhận đơn hàng</h3>
-
-{% if items %}
-<div class="row">
-  <div class="col-lg-8">
-    <div class="card mb-3">
-      <div class="card-body">
-        {% for it in items %}
-        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
-          <div class="d-flex align-items-center gap-3">
-            {% if it.hinh_anh %}
-              <img src="{{ MEDIA_URL }}{{ it.hinh_anh }}" style="width:64px;height:64px;object-fit:cover" class="rounded">
-            {% endif %}
-            <div>
-              <div class="fw-semibold">{{ it.tenSanPham }}</div>
-              <div class="text-muted small">SL: {{ it.so_luong }} × {{ it.don_gia|intcomma }}</div>
-            </div>
-          </div>
-          <div class="fw-bold">{{ it.thanh_tien|intcomma }} đ</div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
+<h2 class="mb-3">Thanh toán</h2>
+<form id="checkoutForm" class="card p-3 shadow-sm rounded-3" onsubmit="return submitOrder(event)">
+  <div class="mb-3">
+    <label>Họ tên</label>
+    <input class="form-control" name="hoTen" required>
   </div>
-
-  <div class="col-lg-4">
-    <form class="card" method="post" action="{% url 'shop:place_order' %}">
-      {% csrf_token %}
-      <div class="card-body">
-        <div class="d-flex justify-content-between">
-          <div class="text-muted">Tạm tính</div>
-          <div class="fw-semibold">{{ tong_tien|intcomma }} đ</div>
-        </div>
-        <hr>
-        <div class="mb-2">
-          <label class="form-label">Họ tên</label>
-          <input name="ho_ten" class="form-control" required>
-        </div>
-        <div class="mb-2">
-          <label class="form-label">Số điện thoại</label>
-          <input name="so_dien_thoai" class="form-control" required>
-        </div>
-        <div class="mb-2">
-          <label class="form-label">Địa chỉ</label>
-          <textarea name="dia_chi" class="form-control" rows="2" required></textarea>
-        </div>
-        <div class="mb-2">
-          <label class="form-label">Ngày giao dự kiến</label>
-          <input type="date" name="ngay_giao" class="form-control">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Ghi chú</label>
-          <textarea name="ghi_chu" class="form-control" rows="2"></textarea>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Phương thức thanh toán</label>
-          <select name="phuong_thuc_thanh_toan" class="form-select">
-            <option value="COD">COD (thanh toán khi nhận)</option>
-            <option value="vi_dien_tu">Ví điện tử / chuyển khoản</option>
-          </select>
-        </div>
-        <button class="btn btn-success w-100">Đặt hàng</button>
-      </div>
-    </form>
+  <div class="mb-3">
+    <label>Số điện thoại</label>
+    <input class="form-control" name="soDienThoai" required>
   </div>
-</div>
-{% else %}
-<div class="alert alert-info">Không có sản phẩm để đặt.</div>
-<a href="{% url 'shop:sanpham_list' %}" class="btn btn-success">Mua sắm ngay</a>
-{% endif %}
+  <div class="mb-3">
+    <label>Địa chỉ</label>
+    <textarea class="form-control" name="diaChi" required></textarea>
+  </div>
+  <div class="mb-3">
+    <label>Ngày giao</label>
+    <input type="date" class="form-control" name="ngayGiao">
+  </div>
+  <div class="mb-3">
+    <label>Ghi chú</label>
+    <input class="form-control" name="ghiChu">
+  </div>
+  <div class="mb-3">
+    <label>Phương thức thanh toán</label>
+    <select class="form-select" name="paymentMethod">
+      <option value="cod">Thanh toán khi nhận hàng</option>
+      <option value="chuyen_khoan">Chuyển khoản</option>
+    </select>
+  </div>
+  <button class="btn btn-success">Đặt hàng</button>
+</form>
+
+<script>
+async function submitOrder(e) {
+  e.preventDefault();
+  const f = e.target;
+  const data = {
+    shipping: {
+      hoTen: f.hoTen.value,
+      soDienThoai: f.soDienThoai.value,
+      diaChi: f.diaChi.value,
+      ngayGiao: f.ngayGiao.value,
+      ghiChu: f.ghiChu.value,
+    },
+    paymentMethod: f.paymentMethod.value
+  };
+  const res = await fetch('/api/orders/checkout', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+  if (res.status === 401) return location.href = "{% url 'shop:auth_login_page' %}";
+  const js = await res.json();
+  if (js.created) {
+    alert('Đặt hàng thành công!');
+    location.href = '/don-hang/' + js.created + '/';
+  } else {
+    alert('Lỗi: ' + (js.error || res.status));
+  }
+}
+</script>
 {% endblock %}
