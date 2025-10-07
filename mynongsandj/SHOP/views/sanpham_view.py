@@ -21,6 +21,7 @@ def _save_product_file(fileobj):
     fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "sanpham"))
     filename = fs.save(fileobj.name, fileobj)
     return "sanpham/" + filename
+
 def _as_oid(val):
     if not val:
         return None
@@ -42,7 +43,6 @@ def _pick(data, *names):
     return {k: data.get(k) for k in names if k in data}
 
 def _get_val(body, *keys, default=None, cast=None):
-    """Lấy giá trị từ body cho nhiều key khả dĩ (snake/camel)."""
     for k in keys:
         if k in body and body[k] is not None:
             v = body[k]
@@ -108,10 +108,8 @@ def products_list(request):
 def products_create(request):
     """
     POST /api/products/
-    - Hỗ trợ multipart/form-data (upload ảnh) và JSON.
-    - Nhận cả snake_case (ten_san_pham) và camelCase (tenSanPham)
+    Hỗ trợ multipart/form-data và JSON.
     """
-    # multipart: upload ảnh
     if (request.content_type or "").startswith("multipart/form-data"):
         ten = (request.POST.get("ten_san_pham") or request.POST.get("tenSanPham") or "").strip()
         mo_ta = (request.POST.get("mo_ta") or request.POST.get("moTa") or "").strip()
@@ -181,8 +179,6 @@ def products_create(request):
 
     res = san_pham.insert_one(doc)
     created = san_pham.find_one({"_id": res.inserted_id})
-    if not created:
-        return JsonResponse({"error": "Insert failed"}, status=500)
     return _ok_json(_product_to_snake(created), status=201)
 
 # ================ DETAIL (GET/PUT/DELETE) ==================
@@ -190,7 +186,7 @@ def products_create(request):
 def product_detail(request, id):
     """
     GET /api/products/<id>/
-    PUT /api/products/<id>/        (JSON hoặc multipart/form-data)
+    PUT /api/products/<id>/
     DELETE /api/products/<id>/
     """
     oid = _as_oid(id)
@@ -202,14 +198,21 @@ def product_detail(request, id):
         sp = san_pham.find_one({"_id": oid})
         if not sp:
             return JsonResponse({"error": "Not found"}, status=404)
-        return _ok_json(_product_to_snake(sp))
+
+        # ✅ Trả dữ liệu đầy đủ cho cả đơn hàng và admin
+        return JsonResponse({
+            "id": str(sp.get("_id")),
+            "tenSanPham": sp.get("tenSanPham") or sp.get("ten") or sp.get("name", ""),
+            "moTa": sp.get("moTa", ""),
+            "gia": int(sp.get("gia", 0)),
+            "hinhAnh": sp.get("hinhAnh", []),
+            "danhMucId": str(sp.get("danhMucId")) if sp.get("danhMucId") else None
+        }, json_dumps_params={"ensure_ascii": False})
 
     # ---------- PUT ----------
     elif request.method == "PUT":
         ctype = (request.content_type or "").lower()
         update = {}
-
-        # --- multipart/form-data: Django không tự parse cho PUT -> ta tự parse ---
         if ctype.startswith("multipart/form-data"):
             try:
                 parser = MultiPartParser(request.META, request, request.upload_handlers, request.encoding)
@@ -217,39 +220,30 @@ def product_detail(request, id):
             except Exception:
                 return JsonResponse({"error": "parse_multipart_failed"}, status=400)
 
-            # đọc các field text
-            ten         = (data.get("ten_san_pham") or data.get("tenSanPham") or "").strip()
-            mo_ta       = (data.get("mo_ta") or data.get("moTa") or "").strip()
-            gia_raw     = data.get("gia")
+            ten = (data.get("ten_san_pham") or data.get("tenSanPham") or "").strip()
+            mo_ta = (data.get("mo_ta") or data.get("moTa") or "").strip()
+            gia_raw = data.get("gia")
             danh_muc_id = data.get("danh_muc_id") or data.get("danhMucId")
 
             if ten:
                 update["tenSanPham"] = ten
             if mo_ta:
                 update["moTa"] = mo_ta
-            if gia_raw is not None and str(gia_raw) != "":
+            if gia_raw:
                 try:
                     update["gia"] = int(gia_raw)
-                except Exception:
+                except:
                     return JsonResponse({"error": "gia phải là số"}, status=400)
-
             if danh_muc_id:
                 oid_dm = _as_oid(danh_muc_id)
-                if not oid_dm:
-                    return JsonResponse({"error": "Invalid danh_muc_id"}, status=400)
-                update["danhMucId"] = oid_dm
+                if oid_dm:
+                    update["danhMucId"] = oid_dm
 
-            # ảnh: ưu tiên file; nếu không có file thì lấy chuỗi URL từ text input
             file_obj = files.get("hinh_anh") or files.get("hinhAnh")
             if file_obj:
                 saved = _save_product_file(file_obj)
                 update["hinhAnh"] = [saved]
-            else:
-                url_text = (data.get("hinh_anh") or data.get("hinhAnh") or "").strip()
-                if url_text:
-                    update["hinhAnh"] = [url_text]
 
-        # --- JSON body (giữ nguyên logic cũ) ---
         else:
             err = _json_required(request)
             if err:
@@ -259,33 +253,28 @@ def product_detail(request, id):
             except Exception:
                 return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-            if any(k in body for k in ["ten_san_pham", "tenSanPham"]):
-                update["tenSanPham"] = (_get_val(body, "ten_san_pham", "tenSanPham", default="") or "").strip()
-            if any(k in body for k in ["mo_ta", "moTa"]):
-                update["moTa"] = (_get_val(body, "mo_ta", "moTa", default="") or "").strip()
+            if "ten_san_pham" in body or "tenSanPham" in body:
+                update["tenSanPham"] = _get_val(body, "ten_san_pham", "tenSanPham", default="")
+            if "mo_ta" in body or "moTa" in body:
+                update["moTa"] = _get_val(body, "mo_ta", "moTa", default="")
             if "gia" in body:
                 try:
                     update["gia"] = int(body.get("gia") or 0)
-                except Exception:
+                except:
                     return JsonResponse({"error": "gia phải là số"}, status=400)
-            if any(k in body for k in ["hinh_anh", "hinhAnh"]):
+            if "hinh_anh" in body or "hinhAnh" in body:
                 ha = _get_val(body, "hinh_anh", "hinhAnh", default=[])
-                update["hinhAnh"] = ha if isinstance(ha, list) else ([ha] if ha else [])
-            if any(k in body for k in ["danh_muc_id", "danhMucId"]):
+                update["hinhAnh"] = ha if isinstance(ha, list) else [ha]
+            if "danh_muc_id" in body or "danhMucId" in body:
                 dm = _get_val(body, "danh_muc_id", "danhMucId")
                 oid_dm = _as_oid(dm)
-                if not oid_dm:
-                    return JsonResponse({"error": "Invalid danh_muc_id"}, status=400)
-                update["danhMucId"] = oid_dm
+                if oid_dm:
+                    update["danhMucId"] = oid_dm
 
-        # Nếu người dùng không đổi gì và không gửi ảnh mới/URL -> báo lỗi như cũ
         if not update:
             return JsonResponse({"error": "No fields to update"}, status=400)
 
-        result = san_pham.update_one({"_id": oid}, {"$set": update})
-        if result.matched_count == 0:
-            return JsonResponse({"error": "Not found"}, status=404)
-
+        san_pham.update_one({"_id": oid}, {"$set": update})
         sp = san_pham.find_one({"_id": oid})
         return _ok_json(_product_to_snake(sp))
 
@@ -296,8 +285,7 @@ def product_detail(request, id):
             return JsonResponse({"error": "Not found"}, status=404)
         return HttpResponse(status=204)
 
-    else:
-        return HttpResponseNotAllowed(["GET", "PUT", "DELETE"])
+    return HttpResponseNotAllowed(["GET", "PUT", "DELETE"])
 
 # ============ ADMIN PANEL VIEWS ============
 def _categories_for_select():
@@ -309,14 +297,11 @@ def _categories_for_select():
 def admin_products_list(request):
     q = (request.GET.get("q") or "").strip()
     page = int(request.GET.get("page", 1))
-
     filter_ = {}
     if q:
         filter_["tenSanPham"] = {"$regex": q, "$options": "i"}
 
     cursor = san_pham.find(filter_).sort("tenSanPham", 1)
-
-    # map danh mục
     cat_map = {str(c["_id"]): c.get("tenDanhMuc", "") for c in danhmuc.find({})}
 
     products = []
@@ -346,10 +331,7 @@ def admin_products_list(request):
     })
 
 def product_create(request):
-    """Trang tạo sản phẩm (render form + submit qua API create)."""
     if request.method == "POST":
-        # (Bạn đang submit qua JS tới /api/products/create/):
-        # ở đây vẫn giữ fallback nếu submit thẳng form
         ten = (request.POST.get("ten_san_pham") or request.POST.get("tenSanPham") or "").strip()
         mo_ta = (request.POST.get("mo_ta") or request.POST.get("moTa") or "").strip()
         danh_muc_id = request.POST.get("danh_muc_id") or request.POST.get("danhMucId")
@@ -359,9 +341,7 @@ def product_create(request):
             messages.error(request, "Giá phải là số!")
             return redirect("shop:admin_product_create")
 
-        doc = {
-            "tenSanPham": ten, "moTa": mo_ta, "gia": gia, "hinhAnh": [],
-        }
+        doc = {"tenSanPham": ten, "moTa": mo_ta, "gia": gia, "hinhAnh": []}
         if danh_muc_id:
             oid = _as_oid(danh_muc_id)
             if not oid:
@@ -378,7 +358,6 @@ def product_create(request):
     })
 
 def product_edit(request, id):
-    """Trang sửa sản phẩm – template của bạn tự fetch /api/products/<id>/ để nạp dữ liệu."""
     oid = _as_oid(id)
     if not oid:
         messages.error(request, "ID sản phẩm không hợp lệ")
@@ -389,17 +368,12 @@ def product_edit(request, id):
         messages.error(request, "Không tìm thấy sản phẩm")
         return redirect("shop:admin_products")
 
-    # Trả categories + product_id cho template JS tự load
     return render(request, "shop/admin/products/products_edit.html", {
         "product_id": id,
         "categories": _categories_for_select()
     })
 
 def product_delete(request, id):
-    """
-    Trang xác nhận xóa (GET) + xóa qua API (JS DELETE tới /api/products/<id>/).
-    Nếu muốn xóa ngay khi GET: đổi logic theo nhu cầu.
-    """
     oid = _as_oid(id)
     if not oid:
         messages.error(request, "ID sản phẩm không hợp lệ")
@@ -413,7 +387,4 @@ def product_delete(request, id):
             messages.success(request, "Xoá sản phẩm thành công!")
         return redirect("shop:admin_products")
 
-    # GET → render trang xác nhận (template của bạn dùng JS gọi API DELETE)
-    return render(request, "shop/admin/products/products_delete.html", {
-        "product_id": id
-    })
+    return render(request, "shop/admin/products/products_delete.html", {"product_id": id})

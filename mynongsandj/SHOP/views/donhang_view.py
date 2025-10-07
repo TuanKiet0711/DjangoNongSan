@@ -144,13 +144,24 @@ def orders_list(request):
         items.append({
             "id": str(d.get("_id")),
             "taiKhoanId": str(d.get("taiKhoanId")),
-            "soLuongSanPham": sum(_int(it.get("soLuong", 0), 0) for it in (d.get("items") or [])),
             "tongTien": _int(d.get("tongTien", 0), 0),
             "trangThai": d.get("trangThai", ""),
             "phuongThucThanhToan": d.get("phuongThucThanhToan", ""),
             "ngayTao": _iso(d.get("ngayTao")),
+            # ✅ Thêm thông tin sản phẩm để front-end hiển thị
+            "items": [
+                {
+                    "sanPhamId": str(it.get("sanPhamId")),
+                    "tenSanPham": it.get("tenSanPham", ""),
+                    "soLuong": _int(it.get("soLuong", 0), 0),
+                    "donGia": _int(it.get("donGia", 0), 0),
+                    "thanhTien": _int(it.get("thanhTien", 0), 0),
+                }
+                for it in (d.get("items") or [])
+            ]
         })
     return JsonResponse({"items": items})
+
 
 
 # ================ CREATE (CHECKOUT API – từ giỏ hoặc buy_now_id) ==================

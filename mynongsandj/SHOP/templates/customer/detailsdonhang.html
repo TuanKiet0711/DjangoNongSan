@@ -14,45 +14,52 @@
   .st-dang_giao   { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
   .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0; }
   .st-da_huy      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+  .product-img { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #dee2e6; }
 </style>
 
 <script>
-async function fetchProductInfo(id){
+async function getProduct(id){
   try{
-    const res=await fetch(`/api/products/${id}/`);
-    if(!res.ok) return {};
+    const res = await fetch(`/api/products/${id}/`, {credentials:'same-origin'});
+    if (!res.ok) return null;
     return await res.json();
-  }catch{return {}}
+  }catch{return null;}
 }
 
 async function loadOrder(){
-  const res=await fetch(`/api/orders/{{ order_id }}/`,{credentials:'same-origin'});
+  const res = await fetch(`/api/orders/{{ order_id }}/`, {credentials:'same-origin'});
   if(res.status===401) return location.href="{% url 'shop:auth_login_page' %}";
-  const o=await res.json();
-  const wrap=document.getElementById('order-detail');
+  const o = await res.json();
+  const wrap = document.getElementById('order-detail');
   if(o.error){wrap.innerHTML=`<div class="alert alert-danger">${o.error}</div>`;return;}
 
-  let itemsHTML='';
+  let rows = '';
   for(const it of o.items){
-    const p=await fetchProductInfo(it.sanPhamId);
-    itemsHTML+=`
+    const p = await getProduct(it.sanPhamId);
+    const img = p && (p.hinhAnh?.[0] || p.anh) ? p.hinhAnh[0] || p.anh : '/static/img/no-image.png';
+    const name = p && p.tenSanPham ? p.tenSanPham : '(Không rõ tên)';
+    rows += `
       <tr>
-        <td><img src="${p.anh||'/static/img/no-image.png'}" width="50" class="me-2 rounded border"> ${p.ten||'(Không tên)'}</td>
+        <td>
+          <img src="/media/${img}" class="product-img me-2">
+          ${name}
+        </td>
         <td class="text-center">${it.soLuong}</td>
-        <td class="text-end">${it.donGia.toLocaleString()} đ</td>
-        <td class="text-end">${it.thanhTien.toLocaleString()} đ</td>
+        <td class="text-end">${it.donGia.toLocaleString('vi-VN')} đ</td>
+        <td class="text-end">${it.thanhTien.toLocaleString('vi-VN')} đ</td>
       </tr>`;
   }
 
-  wrap.innerHTML=`
+  wrap.innerHTML = `
     <div class="card p-4 shadow-sm rounded-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="text-success">Chi tiết đơn hàng</h4>
         <span class="badge rounded-pill status-badge st-${o.trangThai}">${o.trangThai}</span>
       </div>
+
       <p><b>Mã đơn:</b> ${o.id}</p>
       <p><b>Phương thức thanh toán:</b> ${o.phuongThucThanhToan}</p>
-      <p><b>Tổng tiền:</b> ${o.tongTien.toLocaleString()} đ</p>
+      <p><b>Tổng tiền:</b> ${o.tongTien.toLocaleString('vi-VN')} đ</p>
       <hr>
       <h6>Thông tin giao hàng</h6>
       <p><b>Họ tên:</b> ${o.shipping.hoTen}</p>
@@ -64,10 +71,11 @@ async function loadOrder(){
       <h6>Sản phẩm</h6>
       <table class="table table-bordered align-middle">
         <thead><tr><th>Tên sản phẩm</th><th class="text-center">SL</th><th class="text-end">Đơn giá</th><th class="text-end">Thành tiền</th></tr></thead>
-        <tbody>${itemsHTML}</tbody>
+        <tbody>${rows}</tbody>
       </table>
     </div>`;
 }
+
 loadOrder();
 </script>
 {% endblock %}
