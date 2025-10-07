@@ -1,38 +1,173 @@
-{% extends 'customer/base.html' %}
+{% extends "customer/base.html" %}
+{% load static %}
+{% block title %}Đơn hàng của tôi{% endblock %}
 {% block content %}
-<h2 class="mb-3">Đơn hàng của tôi</h2>
-<div id="orders"></div>
+
+<div class="container py-4">
+  <!-- Header -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+    <h3 class="mb-2 mb-sm-0 text-success">
+      Đơn hàng của tôi
+      <span id="paid-badge" class="badge rounded-pill ms-1 bg-light text-success border">0</span>
+    </h3>
+
+    <div class="d-flex align-items-center gap-2">
+      <a href="/" class="btn btn-sm btn-outline-secondary">
+        ← Tiếp tục mua sắm
+      </a>
+    </div>
+  </div>
+
+  <div id="orders"></div>
+</div>
+
+<style>
+  h3 { color: #0f766e; }
+  .badge#paid-badge { background: #e8f7f2; color: #0f766e; border: 1px solid #bfe9de; }
+  .card { border-radius: 1rem !important; }
+  .table thead th { white-space: nowrap; }
+  .status-badge { text-transform: none; }
+  .st-cho_xu_ly   { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+  .st-da_xac_nhan { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+  .st-dang_giao   { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
+  .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0; }
+  .st-da_huy      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+  .btn-outline-danger {
+    border-color: #dc3545; color: #dc3545;
+    transition: all 0.2s ease-in-out;
+  }
+  .btn-outline-danger:hover {
+    background-color: #dc3545; color: white;
+    transform: translateY(-1px); box-shadow: 0 2px 6px rgba(220,53,69,0.3);
+  }
+  .btn-outline-primary:hover {
+    transform: translateY(-1px); box-shadow: 0 2px 6px rgba(13,110,253,0.3);
+  }
+  details > summary { cursor: pointer; }
+</style>
+
+<!-- ✅ Toast thông báo -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1055">
+  <div id="toastNotify" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
+    </div>
+  </div>
+</div>
 
 <script>
-async function loadOrders() {
-  const res = await fetch('/api/orders/', {credentials: 'same-origin'});
+function showToast(message, success = true) {
+  const el = document.getElementById('toastNotify');
+  el.classList.remove('bg-success', 'bg-danger');
+  el.classList.add(success ? 'bg-success' : 'bg-danger');
+  el.querySelector('.toast-body').textContent = message;
+  const toast = new bootstrap.Toast(el, { delay: 2500 });
+  toast.show();
+}
+
+(async function loadOrders(){
+  const wrap = document.getElementById('orders');
+  const res = await fetch('/api/orders/', {credentials:'same-origin'});
   if (res.status === 401) return location.href = "{% url 'shop:auth_login_page' %}";
   const data = await res.json();
   const list = data.items || [];
-  const wrap = document.getElementById('orders');
+
   if (!list.length) {
-    wrap.innerHTML = '<div class="alert alert-info">Bạn chưa có đơn hàng nào.</div>';
+    wrap.innerHTML = `
+      <div class="alert alert-info shadow-sm rounded-3">
+        Bạn chưa có đơn hàng nào.
+        <a href="/" class="alert-link">Mua ngay</a> nhé!
+      </div>`;
+    document.getElementById('paid-badge').textContent = 0;
     return;
   }
+
+  document.getElementById('paid-badge').textContent = list.length;
+
   wrap.innerHTML = `
-    <table class="table table-striped align-middle">
-      <thead><tr>
-        <th>Mã đơn</th><th class="text-end">Tổng tiền</th>
-        <th>Trạng thái</th><th>Ngày tạo</th><th></th>
-      </tr></thead>
-      <tbody>
-        ${list.map(o => `
-          <tr>
-            <td>${o.id}</td>
-            <td class="text-end">${o.tongTien.toLocaleString()} đ</td>
-            <td>${o.trangThai}</td>
-            <td>${new Date(o.ngayTao).toLocaleString()}</td>
-            <td><a href="/don-hang/${o.id}/" class="btn btn-sm btn-primary">Chi tiết</a></td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>`;
+    <div class="card shadow-sm border-0 rounded-4">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Mã đơn</th>
+              <th>Sản phẩm</th>
+              <th class="text-end">Tổng tiền</th>
+              <th>Thanh toán</th>
+              <th>Trạng thái / Ngày tạo</th>
+              <th style="width:180px" class="text-end">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(o => `
+              <tr>
+                <td><code class="text-muted">${o.id.slice(0,8)}</code></td>
+                <td>
+                  ${(o.items && o.items.length) ? `
+                    <div class="fw-semibold">${o.items[0].sanPhamTen || '(Không rõ sản phẩm)'}</div>
+                    <div class="small text-muted">
+                      SL: ${o.items[0].soLuong}
+                      ${o.items.length > 1 ? ` • +${o.items.length - 1} sản phẩm khác` : ''}
+                    </div>
+                  ` : '(Không rõ sản phẩm)'}
+                </td>
+                <td class="text-end fw-semibold">${(o.tongTien||0).toLocaleString('vi-VN')} đ</td>
+                <td><span class="badge rounded-pill bg-light text-dark border">${(o.phuongThucThanhToan||'').toUpperCase()}</span></td>
+                <td>
+                  <div>
+                    <span class="badge rounded-pill status-badge st-${o.trangThai}">${mapStatus(o.trangThai)}</span>
+                  </div>
+                  <div class="small text-muted mt-1">${new Date(o.ngayTao).toLocaleString('vi-VN')}</div>
+                </td>
+                <td class="text-end">
+                  <div class="d-flex gap-2 justify-content-end">
+                    <a href="/don-hang/${o.id}/" class="btn btn-sm btn-outline-primary">
+                      <i class="bi bi-eye"></i> Chi tiết
+                    </a>
+                    ${(o.trangThai === 'cho_xu_ly' || o.trangThai === 'da_xac_nhan') ? `
+                      <button data-id="${o.id}" class="btn btn-sm btn-outline-danger btn-cancel">
+                        <i class="bi bi-x-circle"></i> Hủy
+                      </button>` : ''}
+                  </div>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // Gắn sự kiện hủy đơn
+  document.querySelectorAll('.btn-cancel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Bạn có chắc muốn hủy đơn này?')) return;
+      const id = btn.dataset.id;
+      try {
+        const r = await fetch(`/api/orders/${id}/cancel/`, { method: 'POST', credentials: 'same-origin' });
+        const js = await r.json().catch(() => ({}));
+        if (r.ok && js.ok !== false) {
+          showToast('✅ Đã hủy đơn hàng!');
+          setTimeout(() => location.reload(), 1200);
+        } else {
+          showToast('❌ Hủy thất bại: ' + (js.error || r.status), false);
+        }
+      } catch (e) {
+        showToast('⚠️ Lỗi mạng, vui lòng thử lại.', false);
+      }
+    });
+  });
+})();
+
+// Helper
+function mapStatus(st) {
+  const m = {
+    'cho_xu_ly': 'Chờ xử lý',
+    'da_xac_nhan': 'Đã xác nhận',
+    'dang_giao': 'Đang giao',
+    'hoan_thanh': 'Hoàn thành',
+    'da_huy': 'Đã hủy'
+  };
+  return m[st] || st;
 }
-loadOrders();
 </script>
 {% endblock %}

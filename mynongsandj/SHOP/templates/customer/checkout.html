@@ -1,65 +1,162 @@
-{% extends 'customer/base.html' %}
+{% extends "customer/base.html" %}
+{% load static %}
+{% block title %}Đặt hàng{% endblock %}
+
 {% block content %}
-<h2 class="mb-3">Thanh toán</h2>
-<form id="checkoutForm" class="card p-3 shadow-sm rounded-3" onsubmit="return submitOrder(event)">
-  <div class="mb-3">
-    <label>Họ tên</label>
-    <input class="form-control" name="hoTen" required>
+<style>
+  .checkout-cart-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.35rem 0}
+  .checkout-cart-item .left{display:flex;align-items:center;gap:.6rem;min-width:0}
+  .checkout-cart-item .thumb{width:44px;height:44px;flex:0 0 44px;border-radius:.5rem;object-fit:cover;border:1px solid #e9ecef;background:#fff}
+  .checkout-cart-item .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  .bank-hint code{background:#f8f9fa;border:1px dashed #e1e1e1;border-radius:.35rem;padding:.15rem .35rem}
+</style>
+
+<section class="py-4">
+  <div class="container">
+    <h2 class="h4 mb-4"><i class="bi bi-bag-check me-2"></i>Đặt hàng</h2>
+
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="card border-success-subtle">
+          <div class="card-body">
+            <h5 class="card-title mb-3">Thông tin nhận hàng</h5>
+
+            <form id="checkoutForm" class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Họ và tên</label>
+                <input name="hoTen" type="text" class="form-control" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Số điện thoại</label>
+                <input name="soDienThoai" type="tel" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Địa chỉ</label>
+                <input name="diaChi" type="text" class="form-control" required>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Ghi chú</label>
+                <textarea name="ghiChu" class="form-control" rows="2"></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Ngày giao</label>
+                <input name="ngayGiao" type="date" class="form-control">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Phương thức thanh toán</label>
+                <select name="paymentMethod" id="paymentSelect" class="form-select">
+                  <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
+                  <option value="chuyen_khoan">Chuyển khoản</option>
+                </select>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card border-success-subtle">
+          <div class="card-body">
+            <h5 class="card-title">Tóm tắt giỏ hàng</h5>
+            <div id="cartList" class="small mb-2 text-muted"></div>
+            <div class="d-flex justify-content-between fw-semibold fs-5">
+              <span>Tổng cộng</span>
+              <span id="sumTotal">0</span>
+            </div>
+            <button id="btnPlaceOrder" class="btn btn-success w-100 mt-3">
+              <i class="bi bi-check2-circle me-1"></i> Xác nhận đặt hàng
+            </button>
+            <a href="/" class="btn btn-outline-success w-100 mt-2">
+              ← Quay lại mua hàng
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="mb-3">
-    <label>Số điện thoại</label>
-    <input class="form-control" name="soDienThoai" required>
+</section>
+
+<!-- ✅ Toast thông báo đẹp -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1055">
+  <div id="toastNotify" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
+    </div>
   </div>
-  <div class="mb-3">
-    <label>Địa chỉ</label>
-    <textarea class="form-control" name="diaChi" required></textarea>
-  </div>
-  <div class="mb-3">
-    <label>Ngày giao</label>
-    <input type="date" class="form-control" name="ngayGiao">
-  </div>
-  <div class="mb-3">
-    <label>Ghi chú</label>
-    <input class="form-control" name="ghiChu">
-  </div>
-  <div class="mb-3">
-    <label>Phương thức thanh toán</label>
-    <select class="form-select" name="paymentMethod">
-      <option value="cod">Thanh toán khi nhận hàng</option>
-      <option value="chuyen_khoan">Chuyển khoản</option>
-    </select>
-  </div>
-  <button class="btn btn-success">Đặt hàng</button>
-</form>
+</div>
 
 <script>
-async function submitOrder(e) {
-  e.preventDefault();
-  const f = e.target;
-  const data = {
-    shipping: {
-      hoTen: f.hoTen.value,
-      soDienThoai: f.soDienThoai.value,
-      diaChi: f.diaChi.value,
-      ngayGiao: f.ngayGiao.value,
-      ghiChu: f.ghiChu.value,
-    },
-    paymentMethod: f.paymentMethod.value
-  };
-  const res = await fetch('/api/orders/checkout', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(data)
-  });
-  if (res.status === 401) return location.href = "{% url 'shop:auth_login_page' %}";
-  const js = await res.json();
-  if (js.created) {
-    alert('Đặt hàng thành công!');
-    location.href = '/don-hang/' + js.created + '/';
-  } else {
-    alert('Lỗi: ' + (js.error || res.status));
+(async () => {
+  const cartList = document.getElementById('cartList');
+  const sumTotal = document.getElementById('sumTotal');
+
+  async function loadCart() {
+    const res = await fetch('/api/cart/?include_product=1', {credentials: 'same-origin'});
+    if (!res.ok) return;
+    const data = await res.json();
+    const items = data.items || [];
+    if (!items.length) {
+      cartList.innerHTML = '<div class="text-danger">Giỏ hàng trống!</div>';
+      return;
+    }
+    let html = '', total = 0;
+    for (const it of items) {
+      const sp = it.san_pham || {};
+      const img = sp.hinhAnh || sp.anh || '/static/img/no-image.png';
+      total += it.thanhTien || 0;
+      html += `
+        <div class="checkout-cart-item">
+          <div class="left">
+            <img src="${img}" class="thumb">
+            <div class="name">${sp.ten || "(Không tên)"} × ${it.soLuong}</div>
+          </div>
+          <div class="fw-semibold">${(it.thanhTien).toLocaleString()} đ</div>
+        </div>`;
+    }
+    cartList.innerHTML = html;
+    sumTotal.textContent = total.toLocaleString('vi-VN') + ' đ';
   }
-}
+
+  // ===== Toast helper =====
+  function showToast(message, success = true) {
+    const el = document.getElementById('toastNotify');
+    el.classList.remove('bg-success', 'bg-danger');
+    el.classList.add(success ? 'bg-success' : 'bg-danger');
+    el.querySelector('.toast-body').textContent = message;
+    const toast = new bootstrap.Toast(el, { delay: 2500 });
+    toast.show();
+  }
+
+  // ===== Đặt hàng =====
+  document.getElementById('btnPlaceOrder').addEventListener('click', async () => {
+    const f = document.getElementById('checkoutForm');
+    const data = {
+      shipping: {
+        hoTen: f.hoTen.value,
+        soDienThoai: f.soDienThoai.value,
+        diaChi: f.diaChi.value,
+        ngayGiao: f.ngayGiao.value,
+        ghiChu: f.ghiChu.value,
+      },
+      paymentMethod: f.paymentMethod.value
+    };
+    const res = await fetch('/api/orders/checkout', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify(data)
+    });
+    const js = await res.json();
+    if (js.created) {
+      showToast('🎉 Đặt hàng thành công!');
+      setTimeout(() => location.href = '/don-hang/' + js.created + '/', 1800);
+    } else {
+      showToast('❌ Lỗi: ' + (js.error || res.status), false);
+    }
+  });
+
+  loadCart();
+})();
 </script>
 {% endblock %}
