@@ -1,0 +1,92 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Chi tiết đơn hàng{% endblock %}
+{% block content %}
+<div class="card border-0 shadow-lg rounded-3">
+  <div class="card-body p-4">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+      <h4 class="mb-2 fw-semibold text-success">
+        🧾 Thông tin đơn hàng
+      </h4>
+      <div class="text-muted small">
+        <span class="badge bg-light text-dark">
+          Ngày tạo: {{ ngayTao|date:"d-m-Y H:i" }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Order info -->
+    <div class="border rounded-3 p-3 shadow-sm mb-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="text-muted">Trạng thái</div>
+          <span class="badge bg-{{ badge }} fs-6 px-3 py-2 mt-1">
+            {% if trangThai == "cho_xu_ly" %}Chờ xử lý
+            {% elif trangThai == "da_xac_nhan" %}Đã xác nhận
+            {% elif trangThai == "dang_giao" %}Đang giao
+            {% elif trangThai == "hoan_thanh" %}Hoàn thành
+            {% elif trangThai == "da_huy" %}Đã hủy
+            {% else %}{{ trangThai }}{% endif %}
+          </span>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted">Phương thức thanh toán</div>
+          <div class="fw-semibold mt-1">{{ pttt }}</div>
+        </div>
+        <div class="col-md-4">
+          <div class="text-muted">Tổng tiền</div>
+          <div class="fw-bold text-success fs-5 mt-1">{{ tongTienFmt }} đ</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shipping info -->
+    <div class="border rounded-3 p-3 shadow-sm mb-4">
+      <h6 class="fw-bold text-primary mb-3">🚚 Thông tin giao hàng</h6>
+      <div class="mb-1"><span class="text-muted">Họ tên:</span> <strong>{{ ship.hoTen }}</strong></div>
+      <div class="mb-1"><span class="text-muted">Số điện thoại:</span> <strong>{{ ship.sdt }}</strong></div>
+      <div class="mb-1"><span class="text-muted">Địa chỉ:</span> <span>{{ ship.diaChi }}</span></div>
+      <div class="mb-1"><span class="text-muted">Ngày giao dự kiến:</span> <span>{{ ship.ngayGiao }}</span></div>
+      <div class="mb-0"><span class="text-muted">Ghi chú:</span> <span>{{ ship.ghiChu|default:"Không có ghi chú." }}</span></div>
+    </div>
+
+    <!-- Items -->
+    <h6 class="fw-bold text-primary mb-2">📦 Danh sách sản phẩm</h6>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle shadow-sm rounded-3 overflow-hidden">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Tên sản phẩm</th>
+            <th class="text-end" style="width:14%">Đơn giá</th>
+            <th class="text-end" style="width:10%">Số lượng</th>
+            <th class="text-end" style="width:16%">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for it in items %}
+          <tr>
+            <td class="ps-3">{{ it.ten }}</td>
+            <td class="text-end">{{ it.donGiaFmt }} đ</td>
+            <td class="text-end">{{ it.soLuong }}</td>
+            <td class="text-end fw-semibold">{{ it.thanhTienFmt }} đ</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4" class="text-center text-muted py-4">Không có sản phẩm nào.</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Back -->
+    <div class="mt-4 d-flex justify-content-end">
+      <a class="btn btn-outline-secondary rounded-pill px-4" href="{% url 'shop:admin_orders' %}">
+        ⬅ Quay lại
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

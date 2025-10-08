@@ -1,0 +1,110 @@
+{% extends "shop/admin/base_admin.html" %}
+{% block title %}Sửa đơn hàng{% endblock %}
+{% block content %}
+<div class="card shadow-lg border-0 rounded-3">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h4 class="mb-0 fw-semibold text-success">🛒 Cập nhật đơn hàng</h4>
+      <span class="text-muted small">
+        Mã đơn: <strong>{{ id|slice:"-6:"|upper }}</strong>
+      </span>
+    </div>
+
+    <form method="post" class="needs-validation" novalidate>
+      {% csrf_token %}
+
+      <!-- Trạng thái và tổng quan -->
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Trạng thái</label>
+          <select name="trangThai" class="form-select rounded-pill shadow-sm">
+            {% for val,label in status_choices %}
+              <option value="{{ val }}" {% if val == cur_status %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Phương thức thanh toán</label>
+          <input class="form-control rounded-pill shadow-sm" value="{{ pttt_label }}" disabled>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Tổng tiền</label>
+          <input class="form-control text-end rounded-pill shadow-sm fw-bold text-success" 
+                 value="{{ tongTienFmt }} đ" disabled>
+        </div>
+      </div>
+
+      <hr class="my-4"/>
+
+      <!-- Thông tin giao hàng -->
+      <h5 class="fw-bold text-primary mb-3">🚚 Thông tin giao hàng</h5>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Họ tên</label>
+          <input class="form-control shadow-sm" value="{{ ship.hoTen }}" disabled>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Số điện thoại</label>
+          <input class="form-control shadow-sm" value="{{ ship.soDienThoai }}" disabled>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Ngày giao</label>
+          <input class="form-control shadow-sm" value="{{ ship.ngayGiao }}" disabled>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Địa chỉ</label>
+          <input class="form-control shadow-sm" value="{{ ship.diaChi }}" disabled>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Ghi chú</label>
+          <textarea class="form-control shadow-sm" rows="2" disabled>{{ ship.ghiChu }}</textarea>
+        </div>
+      </div>
+
+      <hr class="my-4"/>
+
+      <!-- Sản phẩm -->
+      <h5 class="fw-bold text-primary mb-3">📦 Sản phẩm trong đơn</h5>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle shadow-sm rounded-3">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">Tên sản phẩm</th>
+              <th class="text-end" style="width:14%">Đơn giá</th>
+              <th class="text-end" style="width:10%">SL</th>
+              <th class="text-end" style="width:16%">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+            <tr>
+              <td class="ps-3">{{ it.ten }}</td>
+              <td class="text-end">{{ it.donGiaFmt }} đ</td>
+              <td class="text-end">{{ it.soLuong }}</td>
+              <td class="text-end fw-semibold text-success">{{ it.thanhTienFmt }} đ</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-3">Chưa có sản phẩm nào trong đơn.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 d-flex justify-content-end gap-3">
+        <a href="{% url 'shop:admin_orders' %}" class="btn btn-outline-secondary rounded-pill px-4">
+          Hủy
+        </a>
+        <button type="submit" 
+                class="btn btn-success rounded-pill px-4 fw-semibold shadow-sm"
+                style="background:linear-gradient(90deg,#2ecc71,#27ae60)">
+          💾 Lưu thay đổi
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

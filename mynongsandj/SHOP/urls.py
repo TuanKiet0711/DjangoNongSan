@@ -78,6 +78,12 @@ urlpatterns = [
     path("admin-panel/accounts/create/",         av.account_create,  name="admin_account_create"),
     path("admin-panel/accounts/<str:id>/edit/",  av.account_edit,    name="admin_account_edit"),
     path("admin-panel/accounts/<str:id>/delete/",av.account_delete,  name="admin_account_delete"),
+    # --------- Admin Orders ---------
+    path("admin-panel/orders/",                 av.orders_list,   name="admin_orders"),
+    path("admin-panel/orders/<str:id>/",        av.order_details, name="admin_order_details"),
+    path("admin-panel/orders/<str:id>/edit/",   av.order_edit,    name="admin_order_edit"),
+    path("admin-panel/orders/<str:id>/delete/", av.order_delete,  name="admin_order_delete"),
+
     # --------- Auth pages & APIs ---------
     path("auth/login/",    ap.login_page,    name="auth_login_page"),
     path("auth/register/", ap.register_page, name="auth_register_page"),
