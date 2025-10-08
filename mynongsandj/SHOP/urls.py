@@ -53,6 +53,7 @@ urlpatterns = [
     path("api/orders/checkout", dv.orders_checkout, name="api_orders_checkout"),
     path("api/orders/<str:id>/", dv.order_detail, name="api_order_detail"),
     # --------- ✅ API Giỏ hàng (khớp template JS) ---------
+    path("api/cart/",                  cart.api_cart,        name="api_cart"), 
     path("api/cart/add/<str:sp_id>/",    cart.api_add_to_cart, name="api_add_to_cart"),
     path("api/cart/badge/",              cart.api_cart_badge,  name="api_cart_badge"),
     path("api/cart/list/",               cart.api_cart_list,   name="api_cart_list"),

@@ -4,9 +4,10 @@
 
 {% block content %}
 <style>
-  .checkout-cart-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.35rem 0}
+  .checkout-cart-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.35rem 0;border-bottom:1px solid #e9ecef}
+  .checkout-cart-item:last-child{border-bottom:none}
   .checkout-cart-item .left{display:flex;align-items:center;gap:.6rem;min-width:0}
-  .checkout-cart-item .thumb{width:44px;height:44px;flex:0 0 44px;border-radius:.5rem;object-fit:cover;border:1px solid #e9ecef;background:#fff}
+  .checkout-cart-item .thumb{width:50px;height:50px;flex:0 0 50px;border-radius:.5rem;object-fit:cover;border:1px solid #e9ecef;background:#fff}
   .checkout-cart-item .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
   .bank-hint code{background:#f8f9fa;border:1px dashed #e1e1e1;border-radius:.35rem;padding:.15rem .35rem}
 </style>
@@ -16,11 +17,11 @@
     <h2 class="h4 mb-4"><i class="bi bi-bag-check me-2"></i>Đặt hàng</h2>
 
     <div class="row g-4">
-      <div class="col-lg-7">
-        <div class="card border-success-subtle">
+      <!-- LEFT: Thông tin nhận hàng + danh sách sản phẩm -->
+      <div class="col-lg-8">
+        <div class="card border-success-subtle mb-4">
           <div class="card-body">
             <h5 class="card-title mb-3">Thông tin nhận hàng</h5>
-
             <form id="checkoutForm" class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">Họ và tên</label>
@@ -52,22 +53,27 @@
             </form>
           </div>
         </div>
-      </div>
 
-      <div class="col-lg-5">
+        <!-- ✅ Danh sách sản phẩm -->
         <div class="card border-success-subtle">
           <div class="card-body">
-            <h5 class="card-title">Tóm tắt giỏ hàng</h5>
+            <h5 class="card-title mb-3">Sản phẩm trong đơn</h5>
             <div id="cartList" class="small mb-2 text-muted"></div>
-            <div class="d-flex justify-content-between fw-semibold fs-5">
-              <span>Tổng cộng</span>
-              <span id="sumTotal">0</span>
-            </div>
-            <button id="btnPlaceOrder" class="btn btn-success w-100 mt-3">
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Tổng cộng -->
+      <div class="col-lg-4">
+        <div class="card border-success-subtle">
+          <div class="card-body">
+            <h5 class="card-title">Tổng cộng</h5>
+            <div class="fs-5 fw-semibold text-end mb-3" id="sumTotal">0 đ</div>
+            <button id="btnPlaceOrder" class="btn btn-success w-100">
               <i class="bi bi-check2-circle me-1"></i> Xác nhận đặt hàng
             </button>
-            <a href="/" class="btn btn-outline-success w-100 mt-2">
-              ← Quay lại mua hàng
+            <a href="/cart/" class="btn btn-outline-success w-100 mt-2">
+              ← Quay lại giỏ hàng
             </a>
           </div>
         </div>
@@ -92,33 +98,46 @@
   const sumTotal = document.getElementById('sumTotal');
 
   async function loadCart() {
-    const res = await fetch('/api/cart/?include_product=1', {credentials: 'same-origin'});
-    if (!res.ok) return;
-    const data = await res.json();
-    const items = data.items || [];
-    if (!items.length) {
-      cartList.innerHTML = '<div class="text-danger">Giỏ hàng trống!</div>';
-      return;
+    try {
+      const res = await fetch('/api/cart/?include_product=1', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('Không lấy được giỏ hàng');
+      const data = await res.json();
+      const items = data.items || [];
+      if (!items.length) {
+        cartList.innerHTML = '<div class="text-danger">Giỏ hàng trống!</div>';
+        sumTotal.textContent = '0 đ';
+        return;
+      }
+
+      let html = '', total = 0;
+      for (const it of items) {
+        const sp = it.san_pham || {};
+        const ten = sp.tenSanPham || '(Không tên)';
+        let img = '/static/img/no-image.png';
+        if (sp.hinhAnh) {
+          img = sp.hinhAnh.startsWith('http') ? sp.hinhAnh : '/media/' + sp.hinhAnh;
+        }
+
+        total += it.thanhTien || 0;
+
+        html += `
+          <div class="checkout-cart-item">
+            <div class="left">
+              <img src="${img}" class="thumb" alt="${ten}">
+              <div class="name">${ten} × ${it.soLuong}</div>
+            </div>
+            <div class="fw-semibold">${(it.thanhTien || 0).toLocaleString('vi-VN')} đ</div>
+          </div>`;
+      }
+
+      cartList.innerHTML = html;
+      sumTotal.textContent = total.toLocaleString('vi-VN') + ' đ';
+    } catch (err) {
+      console.error('loadCart error:', err);
+      cartList.innerHTML = '<div class="text-danger">Không thể tải giỏ hàng!</div>';
     }
-    let html = '', total = 0;
-    for (const it of items) {
-      const sp = it.san_pham || {};
-      const img = sp.hinhAnh || sp.anh || '/static/img/no-image.png';
-      total += it.thanhTien || 0;
-      html += `
-        <div class="checkout-cart-item">
-          <div class="left">
-            <img src="${img}" class="thumb">
-            <div class="name">${sp.ten || "(Không tên)"} × ${it.soLuong}</div>
-          </div>
-          <div class="fw-semibold">${(it.thanhTien).toLocaleString()} đ</div>
-        </div>`;
-    }
-    cartList.innerHTML = html;
-    sumTotal.textContent = total.toLocaleString('vi-VN') + ' đ';
   }
 
-  // ===== Toast helper =====
   function showToast(message, success = true) {
     const el = document.getElementById('toastNotify');
     el.classList.remove('bg-success', 'bg-danger');
@@ -128,7 +147,6 @@
     toast.show();
   }
 
-  // ===== Đặt hàng =====
   document.getElementById('btnPlaceOrder').addEventListener('click', async () => {
     const f = document.getElementById('checkoutForm');
     const data = {
@@ -141,22 +159,27 @@
       },
       paymentMethod: f.paymentMethod.value
     };
-    const res = await fetch('/api/orders/checkout', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      credentials: 'same-origin',
-      body: JSON.stringify(data)
-    });
-    const js = await res.json();
-    if (js.created) {
-      showToast('🎉 Đặt hàng thành công!');
-      setTimeout(() => location.href = '/don-hang/' + js.created + '/', 1800);
-    } else {
-      showToast('❌ Lỗi: ' + (js.error || res.status), false);
+    try {
+      const res = await fetch('/api/orders/checkout', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify(data)
+      });
+      const js = await res.json();
+      if (js.created) {
+        showToast('🎉 Đặt hàng thành công!');
+        setTimeout(() => location.href = '/don-hang/' + js.created + '/', 1800);
+      } else {
+        showToast('❌ Lỗi: ' + (js.error || res.status), false);
+      }
+    } catch (err) {
+      showToast('❌ Không thể gửi yêu cầu', false);
     }
   });
 
   loadCart();
 })();
 </script>
+
 {% endblock %}

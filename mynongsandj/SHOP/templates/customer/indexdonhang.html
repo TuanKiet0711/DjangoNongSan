@@ -18,7 +18,14 @@
 </div>
 
 <style>
-  .product-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6;margin-right:.5rem}
+  .product-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    margin-right: 0.5rem;
+  }
   .status-badge{text-transform:none}
   .st-cho_xu_ly{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
   .st-da_xac_nhan{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
@@ -28,91 +35,153 @@
 </style>
 
 <script>
-async function getProduct(id){
-  try{
-    const res = await fetch(`/api/products/${id}/`, {credentials:'same-origin'});
-    if(!res.ok) return null;
-    const p = await res.json();
-    const name = p.tenSanPham || p.ten || p.name || (p.san_pham && p.san_pham.ten) || '(Không rõ tên)';
-    const img = (p.hinhAnh && p.hinhAnh[0]) || p.anh || (p.san_pham && p.san_pham.hinhAnh?.[0]) || '/static/img/no-image.png';
-    return { name, img };
-  }catch(e){
-    console.error("getProduct error:", e);
-    return null;
-  }
-}
-
-(async function loadOrders(){
+(async function () {
   const wrap = document.getElementById('orders');
-  try {
-    const res = await fetch('/api/orders/', {credentials:'same-origin'});
-    if(res.status === 401) return location.href = "{% url 'shop:auth_login_page' %}";
-    const data = await res.json();
-    console.log("API /orders result:", data);
 
-    const list = data.items || [];
-    document.getElementById('paid-badge').textContent = list.length;
+  function mapStatus(st) {
+    const m = {
+      cho_xu_ly: "Chờ xử lý",
+      da_xac_nhan: "Đã xác nhận",
+      dang_giao: "Đang giao",
+      hoan_thanh: "Hoàn thành",
+      da_huy: "Đã hủy",
+    };
+    return m[st] || st;
+  }
 
-    if(!list.length){
-      wrap.innerHTML = '<div class="alert alert-info shadow-sm rounded-3">Bạn chưa có đơn hàng nào. <a href="/" class="alert-link">Mua ngay</a> nhé!</div>';
-      return;
+  function normImg(path) {
+    if (!path) return "/static/img/no-image.png";
+    if (path.startsWith("http") || path.startsWith("/media/")) return path;
+    return "/media/" + path.replace(/^\/+/, "");
+  }
+
+  async function getProductImage(spId) {
+    try {
+      const res = await fetch(`/api/products/${spId}/`, { credentials: "same-origin" });
+      if (!res.ok) return "/static/img/no-image.png";
+      const p = await res.json();
+      const img = Array.isArray(p.hinhAnh) ? p.hinhAnh[0] : p.hinhAnh;
+      return normImg(img);
+    } catch {
+      return "/static/img/no-image.png";
     }
+  }
 
-    let html = `<div class="card shadow-sm border-0 rounded-4"><div class="table-responsive"><table class="table align-middle mb-0">
-      <thead class="table-light">
-        <tr><th>Mã đơn</th><th>Sản phẩm</th><th class="text-end">Tổng tiền</th><th>Thanh toán</th><th>Trạng thái / Ngày tạo</th><th class="text-end">Thao tác</th></tr>
-      </thead><tbody>`;
+  async function loadOrders() {
+    try {
+      const res = await fetch("/api/orders/", { credentials: "same-origin" });
+      if (res.status === 401) return (location.href = "{% url 'shop:auth_login_page' %}");
+      const data = await res.json();
+      const list = data.items || [];
+      document.getElementById("paid-badge").textContent = list.length;
 
-    for(const o of list){
-      let firstName='(Không rõ sản phẩm)', firstImg='/static/img/no-image.png';
-      try {
-        if(o.items && o.items.length){
-          const firstItem = o.items[0];
-          const p = await getProduct(firstItem.sanPhamId);
-          if(p){
-            firstName = p.name;
-            if(p.img) firstImg = p.img.startsWith('http') ? p.img : '/media/' + p.img;
+      if (!list.length) {
+        wrap.innerHTML =
+          '<div class="alert alert-info shadow-sm rounded-3">Bạn chưa có đơn hàng nào. <a href="/" class="alert-link">Mua ngay</a> nhé!</div>';
+        return;
+      }
+
+      let html = `
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="table-responsive">
+            <table class="table align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Mã đơn</th>
+                  <th>Sản phẩm</th>
+                  <th class="text-end">Tổng tiền</th>
+                  <th>Thanh toán</th>
+                  <th>Trạng thái / Ngày tạo</th>
+                  <th class="text-end">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>`;
+
+      for (const o of list) {
+        let firstName = "(Không rõ sản phẩm)";
+        let firstImg = "/static/img/no-image.png";
+        let firstQty = 0;
+        let more = 0;
+
+        if (o.items && o.items.length) {
+          const it = o.items[0];
+          firstName = it.tenSanPham || "(Không rõ sản phẩm)";
+          firstQty = it.soLuong || 0;
+          more = Math.max(0, o.items.length - 1);
+          if (it.hinhAnh) {
+            firstImg = normImg(it.hinhAnh);
+          } else {
+            // gọi API để lấy ảnh nếu đơn không lưu hinhAnh
+            firstImg = await getProductImage(it.sanPhamId);
           }
         }
-      } catch(e) { console.error("Item parse error:", e); }
 
-      html += `
-        <tr>
-          <td><code>${o.id.slice(0,8)}</code></td>
-          <td>
-            <div class="d-flex align-items-center">
-              <img src="${firstImg}" class="product-thumb" alt="${firstName}">
-              <div>
-                <div class="fw-semibold">${firstName}</div>
-                <div class="small text-muted">SL: ${o.items?.[0]?.soLuong || 0}${o.items?.length>1?' • +'+(o.items.length-1)+' SP khác':''}</div>
+        html += `
+          <tr>
+            <td><code>${o.id.slice(0, 8)}</code></td>
+            <td>
+              <div class="d-flex align-items-center">
+                <img src="${firstImg}" class="product-thumb" alt="${firstName}">
+                <div>
+                  <div class="fw-semibold">${firstName}</div>
+                  <div class="small text-muted">SL: ${firstQty}${more ? ` • +${more} SP khác` : ""}</div>
+                </div>
               </div>
-            </div>
-          </td>
-          <td class="text-end fw-semibold">${(o.tongTien||0).toLocaleString('vi-VN')} đ</td>
-          <td><span class="badge bg-light text-dark border">${(o.phuongThucThanhToan||'').toUpperCase()}</span></td>
-          <td>
-            <span class="badge rounded-pill status-badge st-${o.trangThai}">${mapStatus(o.trangThai)}</span><br>
-            <span class="small text-muted">${new Date(o.ngayTao).toLocaleString('vi-VN')}</span>
-          </td>
-          <td class="text-end">
-            <a href="/don-hang/${o.id}/" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Chi tiết</a>
-            ${(o.trangThai==='cho_xu_ly'||o.trangThai==='da_xac_nhan')?`<button data-id="${o.id}" class="btn btn-sm btn-outline-danger btn-cancel"><i class="bi bi-x-circle"></i> Hủy</button>`:''}
-          </td>
-        </tr>`;
+            </td>
+            <td class="text-end fw-semibold">${(o.tongTien || 0).toLocaleString("vi-VN")} đ</td>
+            <td><span class="badge bg-light text-dark border">${(o.phuongThucThanhToan || "").toUpperCase()}</span></td>
+            <td>
+              <span class="badge rounded-pill status-badge st-${o.trangThai}">${mapStatus(o.trangThai)}</span><br>
+              <span class="small text-muted">${new Date(o.ngayTao).toLocaleString("vi-VN")}</span>
+            </td>
+            <td class="text-end">
+              <a href="/don-hang/${o.id}/" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Chi tiết</a>
+              ${
+                o.trangThai === "cho_xu_ly" || o.trangThai === "da_xac_nhan"
+                  ? `<button data-id="${o.id}" class="btn btn-sm btn-outline-danger btn-cancel">
+                    <i class="bi bi-x-circle"></i> Hủy
+                  </button>`
+                  : ""
+              }
+            </td>
+          </tr>`;
+      }
+
+      html += `</tbody></table></div></div>`;
+      wrap.innerHTML = html;
+
+      // Gắn sự kiện hủy
+      document.querySelectorAll(".btn-cancel").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          if (!confirm("Bạn có chắc muốn hủy đơn này?")) return;
+          const id = btn.dataset.id;
+          try {
+            const r = await fetch(`/api/orders/${id}/`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "same-origin",
+              body: JSON.stringify({ trangThai: "da_huy" }),
+            });
+            const js = await r.json().catch(() => ({}));
+            if (r.ok && (js.updated || js.ok !== false)) {
+              alert("✅ Đã hủy đơn hàng!");
+              location.reload();
+            } else {
+              alert("❌ Hủy thất bại: " + (js.error || r.status));
+            }
+          } catch (e) {
+            alert("Lỗi mạng, vui lòng thử lại!");
+          }
+        });
+      });
+    } catch (err) {
+      console.error(err);
+      wrap.innerHTML = '<div class="alert alert-danger">Không thể tải danh sách đơn hàng!</div>';
     }
-
-    html += '</tbody></table></div></div>';
-    wrap.innerHTML = html;
-
-  } catch(err){
-    console.error("loadOrders failed:", err);
-    wrap.innerHTML = '<div class="alert alert-danger">Không thể tải danh sách đơn hàng!</div>';
   }
-})();
 
-function mapStatus(st){
-  const m = {'cho_xu_ly':'Chờ xử lý','da_xac_nhan':'Đã xác nhận','dang_giao':'Đang giao','hoan_thanh':'Hoàn thành','da_huy':'Đã hủy'};
-  return m[st]||st;
-}
+  loadOrders();
+})();
 </script>
+
 {% endblock %}
