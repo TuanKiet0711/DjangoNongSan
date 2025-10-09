@@ -74,6 +74,7 @@
               <th class="ps-3">Tên sản phẩm</th>
               <th class="text-end" style="width:14%">Đơn giá</th>
               <th class="text-end" style="width:10%">SL</th>
+              <th class="text-end" style="width:12%">Tồn kho</th>
               <th class="text-end" style="width:16%">Thành tiền</th>
             </tr>
           </thead>
@@ -83,11 +84,12 @@
               <td class="ps-3">{{ it.ten }}</td>
               <td class="text-end">{{ it.donGiaFmt }} đ</td>
               <td class="text-end">{{ it.soLuong }}</td>
+              <td class="text-end text-primary fw-semibold">{{ it.tonKho }}</td>
               <td class="text-end fw-semibold text-success">{{ it.thanhTienFmt }} đ</td>
             </tr>
             {% empty %}
             <tr>
-              <td colspan="4" class="text-center text-muted py-3">Chưa có sản phẩm nào trong đơn.</td>
+              <td colspan="5" class="text-center text-muted py-3">Chưa có sản phẩm nào trong đơn.</td>
             </tr>
             {% endfor %}
           </tbody>

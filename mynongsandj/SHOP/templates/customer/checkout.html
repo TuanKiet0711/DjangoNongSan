@@ -1,23 +1,61 @@
 {% extends "customer/base.html" %}
 {% load static %}
 {% block title %}Đặt hàng{% endblock %}
-
 {% block content %}
+
 <style>
-  .checkout-cart-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.35rem 0;border-bottom:1px solid #e9ecef}
-  .checkout-cart-item:last-child{border-bottom:none}
-  .checkout-cart-item .left{display:flex;align-items:center;gap:.6rem;min-width:0}
-  .checkout-cart-item .thumb{width:50px;height:50px;flex:0 0 50px;border-radius:.5rem;object-fit:cover;border:1px solid #e9ecef;background:#fff}
-  .checkout-cart-item .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
-  .bank-hint code{background:#f8f9fa;border:1px dashed #e1e1e1;border-radius:.35rem;padding:.15rem .35rem}
+  .checkout-cart-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .5rem 0;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .checkout-cart-item:last-child {
+    border-bottom: none;
+  }
+
+  .checkout-cart-item .left {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    min-width: 0;
+  }
+
+  /* ✅ Giới hạn kích thước ảnh */
+  .checkout-cart-item .thumb {
+    width: 60px;
+    height: 60px;
+    flex: 0 0 60px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #dee2e6;
+    background: #fff;
+  }
+
+  .checkout-cart-item .name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+    font-weight: 500;
+  }
+
+  .card-title {
+    font-weight: 600;
+  }
 </style>
 
 <section class="py-4">
   <div class="container">
-    <h2 class="h4 mb-4"><i class="bi bi-bag-check me-2"></i>Đặt hàng</h2>
+    <h2 class="h4 mb-4">
+      <i class="bi bi-bag-check me-2"></i>Đặt hàng
+    </h2>
 
     <div class="row g-4">
-      <!-- LEFT: Thông tin nhận hàng + danh sách sản phẩm -->
+      <!-- LEFT: thông tin nhận hàng -->
       <div class="col-lg-8">
         <div class="card border-success-subtle mb-4">
           <div class="card-body">
@@ -45,8 +83,8 @@
               </div>
               <div class="col-md-6">
                 <label class="form-label">Phương thức thanh toán</label>
-                <select name="paymentMethod" id="paymentSelect" class="form-select">
-                  <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
+                <select name="paymentMethod" class="form-select">
+                  <option value="cod">COD (Thanh toán khi nhận hàng)</option>
                   <option value="chuyen_khoan">Chuyển khoản</option>
                 </select>
               </div>
@@ -54,7 +92,7 @@
           </div>
         </div>
 
-        <!-- ✅ Danh sách sản phẩm -->
+        <!-- ✅ Sản phẩm trong đơn -->
         <div class="card border-success-subtle">
           <div class="card-body">
             <h5 class="card-title mb-3">Sản phẩm trong đơn</h5>
@@ -72,9 +110,7 @@
             <button id="btnPlaceOrder" class="btn btn-success w-100">
               <i class="bi bi-check2-circle me-1"></i> Xác nhận đặt hàng
             </button>
-            <a href="/cart/" class="btn btn-outline-success w-100 mt-2">
-              ← Quay lại giỏ hàng
-            </a>
+            <a href="/" class="btn btn-outline-success w-100 mt-2">← Tiếp tục mua sắm</a>
           </div>
         </div>
       </div>
@@ -82,51 +118,66 @@
   </div>
 </section>
 
-<!-- ✅ Toast thông báo đẹp -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1055">
-  <div id="toastNotify" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="d-flex">
-      <div class="toast-body"></div>
-      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Đóng"></button>
-    </div>
-  </div>
-</div>
-
 <script>
 (async () => {
   const cartList = document.getElementById('cartList');
   const sumTotal = document.getElementById('sumTotal');
+  const urlParams = new URLSearchParams(window.location.search);
+  const buyNowId = urlParams.get('buy_now');
 
+  // 🟢 Load giỏ hàng hoặc sản phẩm mua ngay
   async function loadCart() {
     try {
-      const res = await fetch('/api/cart/?include_product=1', { credentials: 'same-origin' });
-      if (!res.ok) throw new Error('Không lấy được giỏ hàng');
-      const data = await res.json();
-      const items = data.items || [];
+      let items = [];
+      let total = 0;
+
+      if (buyNowId) {
+        // MUA NGAY
+        const res = await fetch(`/api/products/${buyNowId}/`);
+        const sp = await res.json();
+        if (!res.ok || !sp.tenSanPham) throw new Error('product_not_found');
+
+        const img = sp.hinhAnh && sp.hinhAnh[0]
+          ? `/media/${sp.hinhAnh[0]}`
+          : '/static/img/no-image.png';
+
+        items.push({
+          tenSanPham: sp.tenSanPham,
+          soLuong: 1,
+          thanhTien: sp.gia,
+          hinhAnh: img
+        });
+        total = sp.gia;
+      } else {
+        // TỪ GIỎ HÀNG
+        const res = await fetch('/api/cart/list/', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('cart_error');
+        const data = await res.json();
+        items = data.items || [];
+        total = data.total || 0;
+      }
+
+      // Render
       if (!items.length) {
-        cartList.innerHTML = '<div class="text-danger">Giỏ hàng trống!</div>';
+        cartList.innerHTML = '<div class="text-danger">Không có sản phẩm nào!</div>';
         sumTotal.textContent = '0 đ';
         return;
       }
 
-      let html = '', total = 0;
+      let html = '';
       for (const it of items) {
-        const sp = it.san_pham || {};
-        const ten = sp.tenSanPham || '(Không tên)';
-        let img = '/static/img/no-image.png';
-        if (sp.hinhAnh) {
-          img = sp.hinhAnh.startsWith('http') ? sp.hinhAnh : '/media/' + sp.hinhAnh;
-        }
-
-        total += it.thanhTien || 0;
+        const ten = it.tenSanPham || '(Không rõ sản phẩm)';
+        const img = it.hinhAnh || '/static/img/no-image.png';
+        const sl = it.soLuong || 1;
+        const tt = it.thanhTien || 0;
 
         html += `
           <div class="checkout-cart-item">
             <div class="left">
               <img src="${img}" class="thumb" alt="${ten}">
-              <div class="name">${ten} × ${it.soLuong}</div>
+              <div class="name">${ten} × ${sl}</div>
             </div>
-            <div class="fw-semibold">${(it.thanhTien || 0).toLocaleString('vi-VN')} đ</div>
+            <div class="fw-semibold">${tt.toLocaleString('vi-VN')} đ</div>
           </div>`;
       }
 
@@ -138,15 +189,12 @@
     }
   }
 
+  // 🟢 Hàm thông báo đơn giản
   function showToast(message, success = true) {
-    const el = document.getElementById('toastNotify');
-    el.classList.remove('bg-success', 'bg-danger');
-    el.classList.add(success ? 'bg-success' : 'bg-danger');
-    el.querySelector('.toast-body').textContent = message;
-    const toast = new bootstrap.Toast(el, { delay: 2500 });
-    toast.show();
+    alert(message);
   }
 
+  // 🟩 Gửi yêu cầu đặt hàng
   document.getElementById('btnPlaceOrder').addEventListener('click', async () => {
     const f = document.getElementById('checkoutForm');
     const data = {
@@ -159,6 +207,13 @@
       },
       paymentMethod: f.paymentMethod.value
     };
+
+    // Nếu là MUA NGAY thì gửi thêm thông tin sản phẩm
+    if (buyNowId) {
+      data.buyNowProductId = buyNowId;
+      data.buyNowQuantity = 1;
+    }
+
     try {
       const res = await fetch('/api/orders/checkout', {
         method: 'POST',
@@ -166,15 +221,17 @@
         credentials: 'same-origin',
         body: JSON.stringify(data)
       });
+
       const js = await res.json();
-      if (js.created) {
+      if (res.ok && js.created) {
         showToast('🎉 Đặt hàng thành công!');
-        setTimeout(() => location.href = '/don-hang/' + js.created + '/', 1800);
+        setTimeout(() => location.href = '/don-hang/' + js.created + '/', 1500);
       } else {
         showToast('❌ Lỗi: ' + (js.error || res.status), false);
       }
     } catch (err) {
-      showToast('❌ Không thể gửi yêu cầu', false);
+      console.error('checkout error', err);
+      showToast('❌ Không thể gửi yêu cầu đặt hàng!', false);
     }
   });
 

@@ -385,45 +385,38 @@ def orders_list(request):
     page = max(int(request.GET.get("page", 1)), 1)
     page_size = PAGE_SIZE
 
-    # ---- BUILD FILTER ----
     flt = {}
     if status:
         flt["trangThai"] = status
 
     ors = []
     if q:
-        # Khớp theo mã đơn (_id)
         oid = _safe_oid(q)
         if oid:
             ors.append({"_id": oid})
-
-        # Khớp theo thông tin giao hàng (tên/SĐT/địa chỉ)
         ors += [
             {"shipping.hoTen": {"$regex": q, "$options": "i"}},
             {"shipping.soDienThoai": {"$regex": q, "$options": "i"}},
             {"shipping.diaChi": {"$regex": q, "$options": "i"}},
         ]
-
-        # 🎯 Khớp theo TÀI KHOẢN: tìm _id các account có tên/email/SĐT khớp
         acc_ids = [
-            a["_id"] for a in tai_khoan.find(
+            a["_id"]
+            for a in tai_khoan.find(
                 {
                     "$or": [
                         {"hoTen": {"$regex": q, "$options": "i"}},
                         {"email": {"$regex": q, "$options": "i"}},
-                        {"sdt":   {"$regex": q, "$options": "i"}},
+                        {"sdt": {"$regex": q, "$options": "i"}},
                     ]
                 },
-                {"_id": 1}
+                {"_id": 1},
             )
         ]
         if acc_ids:
             ors.append({"taiKhoanId": {"$in": acc_ids}})
-
     if ors:
         flt["$or"] = ors
 
-    # ---- PAGINATION ----
     total = don_hang.count_documents(flt)
     total_pages = max(1, (total + page_size - 1) // page_size)
     page = min(page, total_pages)
@@ -432,16 +425,6 @@ def orders_list(request):
     cursor = don_hang.find(flt).sort("ngayTao", -1).skip(skip).limit(page_size)
     docs = list(cursor)
 
-    # ---- MAP TRẠNG THÁI + TÊN TÀI KHOẢN ----
-    status_labels = {
-        "cho_xu_ly": "Chờ xử lý",
-        "da_xac_nhan": "Đã xác nhận",
-        "dang_giao": "Đang giao",
-        "hoan_thanh": "Hoàn thành",
-        "da_huy": "Đã hủy",
-    }
-
-    # Lấy danh sách user id để map tên
     user_ids = {d["taiKhoanId"] for d in docs if d.get("taiKhoanId")}
     user_map = {}
     if user_ids:
@@ -452,7 +435,6 @@ def orders_list(request):
     for d in docs:
         trang_thai = d.get("trangThai", "")
         uid_str = str(d.get("taiKhoanId", ""))
-
         items.append({
             "id": str(d["_id"]),
             "maNgan": str(d["_id"])[-6:],
@@ -461,7 +443,13 @@ def orders_list(request):
             "pttt": PM_LABELS.get(d.get("phuongThucThanhToan", ""), d.get("phuongThucThanhToan", "")),
             "trangThai": trang_thai,
             "badge": _badge_status(trang_thai),
-            "trangThaiLabel": status_labels.get(trang_thai, trang_thai),
+            "trangThaiLabel": {
+                "cho_xu_ly": "Chờ xử lý",
+                "da_xac_nhan": "Đã xác nhận",
+                "dang_giao": "Đang giao",
+                "hoan_thanh": "Hoàn thành",
+                "da_huy": "Đã hủy",
+            }.get(trang_thai, trang_thai),
             "ngayTao": d.get("ngayTao"),
         })
 
@@ -476,8 +464,6 @@ def orders_list(request):
         "page_numbers": list(range(1, total_pages + 1)),
     }
     return render(request, "shop/admin/orders/list.html", ctx)
-
-
 
 
 @admin_required
@@ -495,11 +481,15 @@ def order_details(request, id):
     ship = d.get("shipping", {}) or {}
     items = []
     for it in (d.get("items") or []):
+        # 🔹 Lấy số lượng tồn từ DB
+        sp = san_pham.find_one({"_id": it.get("sanPhamId")}, {"soLuongTon": 1})
+        ton_kho = sp.get("soLuongTon", 0) if sp else 0
         items.append({
             "ten": it.get("tenSanPham", ""),
             "soLuong": int(it.get("soLuong", 0)),
             "donGiaFmt": _fmt_money(it.get("donGia", 0)),
             "thanhTienFmt": _fmt_money(it.get("thanhTien", 0)),
+            "tonKho": ton_kho,
         })
 
     ctx = {
@@ -521,28 +511,6 @@ def order_details(request, id):
     }
     return render(request, "shop/admin/orders/details.html", ctx)
 
-def _img_url_from_product(sp):
-    """Trả về URL ảnh hiển thị từ document sản phẩm."""
-    if not sp:
-        return "/static/img/placeholder.png"
-
-    # các key đơn
-    candidates = [sp.get("anh"), sp.get("hinhAnh"), sp.get("image")]
-    # các key list
-    for list_key in ("images", "hinhAnhs", "hinh_anh"):
-        lst = sp.get(list_key)
-        if isinstance(lst, list) and lst:
-            candidates.append(lst[0])
-
-    for path in candidates:
-        if isinstance(path, str) and path.strip():
-            p = path.strip()
-            if p.startswith("http://") or p.startswith("https://") or p.startswith("/media/"):
-                return p
-            # coi như path tương đối trong MEDIA_ROOT
-            return f"/media/{p.lstrip('/')}"
-    return "/static/img/placeholder.png"
-
 
 @admin_required
 def order_edit(request, id):
@@ -556,7 +524,6 @@ def order_edit(request, id):
         messages.error(request, "Không tìm thấy đơn hàng.")
         return redirect("shop:admin_orders")
 
-    # Map trạng thái -> label tiếng Việt
     status_labels = {
         "cho_xu_ly": "Chờ xử lý",
         "da_xac_nhan": "Đã xác nhận",
@@ -568,12 +535,12 @@ def order_edit(request, id):
 
     if request.method == "GET":
         ship = d.get("shipping", {}) or {}
-
-        # ---- Chỉ hiển thị TÊN SP lấy từ snapshot trong đơn (không join DB) ----
         items_vm = []
         tong = int(d.get("tongTien", 0))
 
         for it in (d.get("items") or []):
+            sp = san_pham.find_one({"_id": it.get("sanPhamId")}, {"soLuongTon": 1})
+            ton_kho = sp.get("soLuongTon", 0) if sp else 0
             ten_sp = (it.get("tenSanPham") or "").strip() or "(Chưa có tên)"
             don_gia = int(it.get("donGia", 0))
             so_luong = int(it.get("soLuong", 0))
@@ -584,6 +551,7 @@ def order_edit(request, id):
                 "donGiaFmt": _fmt_money(don_gia),
                 "soLuong": so_luong,
                 "thanhTienFmt": _fmt_money(thanh_tien),
+                "tonKho": ton_kho,
             })
 
         ctx = {
@@ -591,11 +559,8 @@ def order_edit(request, id):
             "cur_status": d.get("trangThai", ""),
             "statuses": [k for k, _ in status_choices],
             "status_choices": status_choices,
-            "cur_status_label": status_labels.get(d.get("trangThai", ""), d.get("trangThai", "")),
-
             "pttt_label": PM_LABELS.get(d.get("phuongThucThanhToan", ""), d.get("phuongThucThanhToan", "")),
             "tongTienFmt": _fmt_money(tong),
-
             "ship": {
                 "hoTen": ship.get("hoTen", ""),
                 "soDienThoai": ship.get("soDienThoai", ""),
@@ -604,22 +569,15 @@ def order_edit(request, id):
                 "ghiChu": ship.get("ghiChu", ""),
             },
             "items": items_vm,
-            "ngayTao": d.get("ngayTao"),
-            "ngayCapNhat": d.get("ngayCapNhat"),
         }
         return render(request, "shop/admin/orders/edit.html", ctx)
 
-    # POST: chỉ cho phép đổi TRẠNG THÁI
     st = (request.POST.get("trangThai") or "").strip()
-    ORDER_STATUSES = ["cho_xu_ly", "da_xac_nhan", "dang_giao", "hoan_thanh", "da_huy"]
     if st not in ORDER_STATUSES:
         messages.error(request, "Trạng thái không hợp lệ.")
         return redirect("shop:admin_order_edit", id=id)
 
-    don_hang.update_one({"_id": oid}, {"$set": {
-        "trangThai": st,
-        "ngayCapNhat": timezone.now(),
-    }})
+    don_hang.update_one({"_id": oid}, {"$set": {"trangThai": st, "ngayCapNhat": timezone.now()}})
     messages.success(request, "Cập nhật trạng thái đơn hàng thành công.")
     return redirect("shop:admin_orders")
 
@@ -636,24 +594,11 @@ def order_delete(request, id):
         messages.error(request, "Không tìm thấy đơn hàng.")
         return redirect("shop:admin_orders")
 
-    # chỉ cho phép xóa các trạng thái sau
     allowed_status = ["cho_xu_ly", "da_xac_nhan", "da_huy"]
     cur_status = d.get("trangThai", "")
-
     if cur_status not in allowed_status:
-        messages.error(
-            request,
-            "Chỉ có thể xóa đơn ở trạng thái: Chờ xử lý, Đã xác nhận hoặc Đã hủy."
-        )
+        messages.error(request, "Chỉ có thể xóa đơn ở trạng thái: Chờ xử lý, Đã xác nhận hoặc Đã hủy.")
         return redirect("shop:admin_orders")
-
-    status_labels = {
-        "cho_xu_ly": "Chờ xử lý",
-        "da_xac_nhan": "Đã xác nhận",
-        "dang_giao": "Đang giao",
-        "hoan_thanh": "Hoàn thành",
-        "da_huy": "Đã hủy",
-    }
 
     if request.method == "GET":
         ship = d.get("shipping", {}) or {}
@@ -661,6 +606,8 @@ def order_delete(request, id):
         tong = int(d.get("tongTien", 0))
 
         for it in (d.get("items") or []):
+            sp = san_pham.find_one({"_id": it.get("sanPhamId")}, {"soLuongTon": 1})
+            ton_kho = sp.get("soLuongTon", 0) if sp else 0
             ten_sp = (it.get("tenSanPham") or "").strip() or "(Chưa có tên)"
             don_gia = int(it.get("donGia", 0))
             so_luong = int(it.get("soLuong", 0))
@@ -671,12 +618,12 @@ def order_delete(request, id):
                 "donGiaFmt": _fmt_money(don_gia),
                 "soLuong": so_luong,
                 "thanhTienFmt": _fmt_money(thanh_tien),
+                "tonKho": ton_kho,
             })
 
         ctx = {
             "id": str(d["_id"]),
             "trangThai": cur_status,
-            "trangThaiLabel": status_labels.get(cur_status, cur_status),
             "badge": _badge_status(cur_status),
             "pttt_label": PM_LABELS.get(d.get("phuongThucThanhToan", ""), d.get("phuongThucThanhToan", "")),
             "tongTienFmt": _fmt_money(tong),
@@ -692,7 +639,7 @@ def order_delete(request, id):
         }
         return render(request, "shop/admin/orders/delete.html", ctx)
 
-    # POST: thực hiện xóa
     don_hang.delete_one({"_id": oid})
     messages.success(request, "Đã xoá đơn hàng thành công.")
     return redirect("shop:admin_orders")
+

@@ -51,6 +51,7 @@ def _json_required(request):
         return JsonResponse({"error": "Content-Type must be application/json"}, status=415)
     return None
 
+
 # ---------- Auth helpers ----------
 def _must_login(request):
     user = request.session.get("user_id")
@@ -68,6 +69,7 @@ def require_login_api(view_func):
         request.user_oid = uid
         return view_func(request, *args, **kwargs)
     return _wrapped
+
 
 # ---------- Cart & Product helpers ----------
 def _get_cart_items(uid: ObjectId):
@@ -104,6 +106,7 @@ def _apply_legacy_root_fields(doc):
     doc["sanPhamId"] = f.get("sanPhamId")
     doc["soLuong"] = _int(f.get("soLuong", 0))
     doc["donGia"] = _int(f.get("donGia", 0))
+
 
 # ================= LIST (MY ORDERS) ==================
 @require_http_methods(["GET"])
@@ -152,44 +155,66 @@ def orders_checkout(request):
         return JsonResponse({"error": "invalid_json"}, status=400)
 
     buyNowProductId = data.get("buyNowProductId")
-    buyNowQuantity = data.get("buyNowQuantity")
+    buyNowQuantity = _int(data.get("buyNowQuantity", 1))
     shipping = data.get("shipping", {}) or {}
     paymentMethod = _pm(data.get("paymentMethod", "cod"))
 
     items = []
     tong_tien = 0
 
-    # --- mua ngay ---
-    if buyNowProductId:
-        sp = sanpham.find_one({"_id": _oid(buyNowProductId)})
+    # 🔹 Helper kiểm tra & trừ tồn (dùng đúng field trong DB: soLuongTon)
+    def check_and_deduct_stock(sp_oid, qty):
+        sp = sanpham.find_one({"_id": sp_oid})
         if not sp:
-            return JsonResponse({"error": "product_not_found"}, status=404)
-        so_luong = max(_int(buyNowQuantity, 1), 1)
+            raise ValueError("product_not_found")
+        ton = _int(sp.get("soLuongTon", 0))
+        if ton < qty:
+            raise ValueError(f"Sản phẩm '{sp.get('tenSanPham')}' không đủ tồn kho (còn {ton})")
+        # ✅ Trừ đúng field hiện tại
+        sanpham.update_one({"_id": sp_oid}, {"$set": {"soLuongTon": ton - qty}})
+        return sp
+
+    # --- 🟢 MUA NGAY ---
+    if buyNowProductId:
+        sp_oid = _oid(buyNowProductId)
+        if not sp_oid:
+            return JsonResponse({"error": "invalid_product_id"}, status=400)
+
+        try:
+            sp = check_and_deduct_stock(sp_oid, buyNowQuantity)
+        except ValueError as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
         ten, don_gia, hinh = _map_product(sp)
-        tt = don_gia * so_luong
+        tt = don_gia * buyNowQuantity
         items.append({
-            "sanPhamId": sp["_id"],
+            "sanPhamId": sp_oid,
             "tenSanPham": ten,
             "hinhAnh": hinh,
-            "soLuong": so_luong,
+            "soLuong": buyNowQuantity,
             "donGia": don_gia,
             "thanhTien": tt,
         })
         tong_tien += tt
+
+    # --- 🟢 TỪ GIỎ HÀNG ---
     else:
-        # --- từ giỏ ---
         cart_items = _get_cart_items(request.user_oid)
         if not cart_items:
             return JsonResponse({"error": "cart_empty"}, status=400)
+
         for c in cart_items:
-            sp = sanpham.find_one({"_id": c["sanPhamId"]})
-            if not sp:
-                continue
-            ten, don_gia, hinh = _map_product(sp)
+            sp_oid = c["sanPhamId"]
             sl = max(_int(c.get("soLuong", 1)), 1)
+            try:
+                sp = check_and_deduct_stock(sp_oid, sl)
+            except ValueError as e:
+                return JsonResponse({"error": str(e)}, status=400)
+
+            ten, don_gia, hinh = _map_product(sp)
             tt = don_gia * sl
             items.append({
-                "sanPhamId": sp["_id"],
+                "sanPhamId": sp_oid,
                 "tenSanPham": ten,
                 "hinhAnh": hinh,
                 "soLuong": sl,
@@ -197,8 +222,10 @@ def orders_checkout(request):
                 "thanhTien": tt,
             })
             tong_tien += tt
+
         giohang.delete_many({"taiKhoanId": request.user_oid})
 
+    # 🧾 Tạo đơn hàng
     now = timezone.now()
     doc = {
         "taiKhoanId": request.user_oid,
