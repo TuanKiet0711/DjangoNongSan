@@ -2,80 +2,183 @@
 {% load static %}
 {% block title %}Chi tiết đơn hàng{% endblock %}
 {% block content %}
+
 <div class="container py-4">
-  <a href="/don-hang/" class="btn btn-sm btn-outline-secondary mb-3">← Quay lại danh sách</a>
+  <a href="/don-hang/" class="btn btn-sm btn-outline-secondary mb-3">
+    <i class="bi bi-arrow-left"></i> Quay lại danh sách
+  </a>
+
   <div id="order-detail"></div>
 </div>
 
 <style>
-  .status-badge { text-transform:none; }
-  .st-cho_xu_ly   { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
-  .st-da_xac_nhan { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
-  .st-dang_giao   { background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; }
-  .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border:1px solid #bbf7d0; }
-  .st-da_huy      { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
-  .product-img { width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid #dee2e6; }
+  /* ===== Card & layout ===== */
+  .order-card{border:1px solid #e9ecef;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
+  .section-title{font-weight:800;font-size:1.05rem;margin-bottom:.75rem;color:#14532d}
+  .kv{display:grid;grid-template-columns:180px 1fr;gap:.35rem .75rem}
+  .kv .k{color:#6b7280}
+  .kv .v{font-weight:600}
+  .divider{height:1px;background:#eef2f3;margin:1rem 0}
+
+  /* ===== Status badge (VN) ===== */
+  .status-badge{border-radius:999px;padding:.35rem .6rem;font-weight:700;border:1px solid transparent}
+  .st-cho_xu_ly   { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
+  .st-da_xac_nhan { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+  .st-dang_giao   { background:#f0f9ff; color:#0369a1; border-color:#bae6fd; }
+  .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border-color:#bbf7d0; }
+  .st-da_huy      { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+
+  /* ===== Product table ===== */
+  .product-img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb}
+  .table thead th{background:#f8fafc}
+  .table td, .table th{vertical-align:middle}
+
+  /* ===== “Form-like” blocks ===== */
+  .form-like{background:#f9fffb;border:1px dashed #b7e4c7;border-radius:12px;padding:12px}
 </style>
 
 <script>
-async function getProduct(id){
-  try{
-    const res = await fetch(`/api/products/${id}/`, {credentials:'same-origin'});
-    if (!res.ok) return null;
-    return await res.json();
-  }catch{return null;}
-}
-
-async function loadOrder(){
-  const res = await fetch(`/api/orders/{{ order_id }}/`, {credentials:'same-origin'});
-  if(res.status===401) return location.href="{% url 'shop:auth_login_page' %}";
-  const o = await res.json();
-  const wrap = document.getElementById('order-detail');
-  if(o.error){wrap.innerHTML=`<div class="alert alert-danger">${o.error}</div>`;return;}
-
-  let rows = '';
-  for(const it of o.items){
-    const p = await getProduct(it.sanPhamId);
-    const img = p && (p.hinhAnh?.[0] || p.anh) ? p.hinhAnh[0] || p.anh : '/static/img/no-image.png';
-    const name = p && p.tenSanPham ? p.tenSanPham : '(Không rõ tên)';
-    rows += `
-      <tr>
-        <td>
-          <img src="/media/${img}" class="product-img me-2">
-          ${name}
-        </td>
-        <td class="text-center">${it.soLuong}</td>
-        <td class="text-end">${it.donGia.toLocaleString('vi-VN')} đ</td>
-        <td class="text-end">${it.thanhTien.toLocaleString('vi-VN')} đ</td>
-      </tr>`;
+  // ==== Helpers ====
+  function formatDateVN(dateStr){
+    if(!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    const dd = String(d.getDate()).padStart(2,'0');
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
   }
 
-  wrap.innerHTML = `
-    <div class="card p-4 shadow-sm rounded-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="text-success">Chi tiết đơn hàng</h4>
-        <span class="badge rounded-pill status-badge st-${o.trangThai}">${o.trangThai}</span>
+  function formatPaymentVN(method){
+    if(!method) return '';
+    const m = (method+'').toLowerCase();
+    if (m.includes('cod')) return 'Thanh toán khi nhận hàng';
+    if (m.includes('chuyen') || m.includes('bank')) return 'Chuyển khoản';
+    return method;
+  }
+
+  function formatStatusVN(status){
+    const s = (status || '').toLowerCase();
+    const map = {
+      'cho_xu_ly': 'Chờ xử lý',
+      'da_xac_nhan': 'Đã xác nhận',
+      'dang_giao': 'Đang giao',
+      'hoan_thanh': 'Hoàn thành',
+      'da_huy': 'Đã hủy'
+    };
+    return map[s] || status;
+  }
+
+  async function getProduct(id){
+    try{
+      const res = await fetch(`/api/products/${id}/`, {credentials:'same-origin'});
+      if(!res.ok) return null;
+      return await res.json();
+    }catch{ return null; }
+  }
+
+  // ==== Main ====
+  async function loadOrder(){
+    const res = await fetch(`/api/orders/{{ order_id }}/`, {credentials:'same-origin'});
+    if(res.status===401) return location.href = "{% url 'shop:auth_login_page' %}";
+    const o = await res.json();
+    const wrap = document.getElementById('order-detail');
+
+    if(o.error){
+      wrap.innerHTML = `<div class="alert alert-danger">${o.error}</div>`;
+      return;
+    }
+
+    // Build product rows
+    let rows = '';
+    for(const it of (o.items || [])){
+      const p = await getProduct(it.sanPhamId);
+      const rawImg = p && (p.hinhAnh?.[0] || p.anh);
+      const img = rawImg ? `/media/${rawImg}` : '/static/img/no-image.png';
+      const name = p && p.tenSanPham ? p.tenSanPham : '(Không rõ tên)';
+
+      rows += `
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <img src="${img}" alt="${name}" class="product-img">
+              <div class="fw-semibold">${name}</div>
+            </div>
+          </td>
+          <td class="text-center">${(it.soLuong||0)}</td>
+          <td class="text-end">${Number(it.donGia||0).toLocaleString('vi-VN')} đ</td>
+          <td class="text-end">${Number(it.thanhTien||0).toLocaleString('vi-VN')} đ</td>
+        </tr>`;
+    }
+
+    const statusClass = `st-${o.trangThai}`;
+    const statusVN = formatStatusVN(o.trangThai);
+    const payVN = formatPaymentVN(o.phuongThucThanhToan);
+
+    // ==== Render card ====
+    wrap.innerHTML = `
+      <div class="order-card p-4">
+        <!-- Header -->
+        <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <h4 class="m-0 text-success fw-bold">Chi tiết đơn hàng</h4>
+            <span class="status-badge ${statusClass}" title="${o.trangThai}">${statusVN}</span>
+          </div>
+          <div class="text-muted">Tổng tiền: <span class="fw-bold">${Number(o.tongTien||0).toLocaleString('vi-VN')} đ</span></div>
+        </div>
+
+        <!-- Tổng quan (form-like) -->
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="form-like">
+              <div class="section-title"><i class="bi bi-receipt-cutoff me-1"></i> Thông tin đơn</div>
+              <div class="kv">
+                <div class="k">Mã đơn</div><div class="v">#${o.id}</div>
+                <div class="k">Trạng thái</div><div class="v">${statusVN}</div>
+                <div class="k">Phương thức thanh toán</div><div class="v">${payVN}</div>
+                <div class="k">Tổng tiền</div><div class="v text-success">${Number(o.tongTien||0).toLocaleString('vi-VN')} đ</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="form-like">
+              <div class="section-title"><i class="bi bi-geo-alt me-1"></i> Thông tin giao hàng</div>
+              <div class="kv">
+                <div class="k">Họ tên</div><div class="v">${o.shipping?.hoTen || ''}</div>
+                <div class="k">Điện thoại</div><div class="v">${o.shipping?.soDienThoai || ''}</div>
+                <div class="k">Địa chỉ</div><div class="v">${o.shipping?.diaChi || ''}</div>
+                <div class="k">Ngày giao (mong muốn)</div><div class="v">${formatDateVN(o.shipping?.ngayGiao)}</div>
+                <div class="k">Ghi chú</div><div class="v">${o.shipping?.ghiChu || ''}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Sản phẩm -->
+        <div class="section-title"><i class="bi bi-bag-check me-1"></i> Sản phẩm</div>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th style="min-width:240px">Tên sản phẩm</th>
+                <th class="text-center" style="width:100px">SL</th>
+                <th class="text-end" style="width:160px">Đơn giá</th>
+                <th class="text-end" style="width:180px">Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows || `<tr><td colspan="4" class="text-center text-muted py-4">Không có sản phẩm</td></tr>`}
+            </tbody>
+          </table>
+        </div>
       </div>
+    `;
+  }
 
-      <p><b>Mã đơn:</b> ${o.id}</p>
-      <p><b>Phương thức thanh toán:</b> ${o.phuongThucThanhToan}</p>
-      <p><b>Tổng tiền:</b> ${o.tongTien.toLocaleString('vi-VN')} đ</p>
-      <hr>
-      <h6>Thông tin giao hàng</h6>
-      <p><b>Họ tên:</b> ${o.shipping.hoTen}</p>
-      <p><b>Điện thoại:</b> ${o.shipping.soDienThoai}</p>
-      <p><b>Địa chỉ:</b> ${o.shipping.diaChi}</p>
-      <p><b>Ngày giao:</b> ${o.shipping.ngayGiao}</p>
-      <p><b>Ghi chú:</b> ${o.shipping.ghiChu}</p>
-      <hr>
-      <h6>Sản phẩm</h6>
-      <table class="table table-bordered align-middle">
-        <thead><tr><th>Tên sản phẩm</th><th class="text-center">SL</th><th class="text-end">Đơn giá</th><th class="text-end">Thành tiền</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-}
-
-loadOrder();
+  loadOrder();
 </script>
+
 {% endblock %}
