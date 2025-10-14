@@ -22,14 +22,12 @@ def sanpham_list(request):
     # --- Xây query Mongo ---
     mongo_filter = {}
 
-    # lọc danh mục
     if cat:
         try:
             mongo_filter["danhMucId"] = ObjectId(cat)
         except Exception:
-            pass  # nếu cat không hợp lệ thì bỏ qua
+            pass
 
-    # lọc theo khoảng giá
     price_cond = {}
     try:
         if pmin not in (None, ""):
@@ -39,10 +37,8 @@ def sanpham_list(request):
         if price_cond:
             mongo_filter["gia"] = price_cond
     except ValueError:
-        # nếu người dùng nhập không phải số, bỏ lọc giá
         pass
 
-    # Tìm kiếm theo từ khóa trong tên / mô tả (regex, không phân biệt hoa thường)
     if q:
         rx = Regex(q, "i")
         mongo_filter["$or"] = [
@@ -50,8 +46,7 @@ def sanpham_list(request):
             {"moTa": rx}
         ]
 
-    # --- Lấy sản phẩm theo filter ---
-    cursor = sanpham.find(mongo_filter).sort("_id", -1)  # sort mới nhất trước
+    cursor = sanpham.find(mongo_filter).sort("_id", -1)
     products = list(cursor)
 
     # --- Chuẩn hoá dữ liệu ra template ---
@@ -69,11 +64,12 @@ def sanpham_list(request):
         sp["hinh_anh"] = imgs if isinstance(imgs, list) else [imgs]
         # Giá
         sp["gia"] = sp.get("gia", 0)
+        # NEW: tồn kho để hiển thị badge/hết hàng nếu muốn
+        sp["so_luong_ton"] = int(sp.get("soLuongTon", 0))
 
     return render(request, "customer/sanpham.html", {
         "categories": categories,
         "products": products,
-        # giữ lại giá trị form
         "q": q,
         "cat_selected": cat,
         "min_selected": pmin or "",
@@ -93,7 +89,6 @@ def product_detail(request, sp_id):
     if not sp:
         return render(request, "customer/details.html", {"product": None, "error": "Không tìm thấy sản phẩm"})
 
-    # Chuẩn hoá dữ liệu
     prod = {
         "id": str(sp["_id"]),
         "ten": sp.get("tenSanPham") or "Sản phẩm",
@@ -101,9 +96,9 @@ def product_detail(request, sp_id):
         "gia": sp.get("gia", 0),
         "hinh_anh": sp.get("hinhAnh") if isinstance(sp.get("hinhAnh"), list)
                        else ([sp.get("hinhAnh")] if sp.get("hinhAnh") else []),
+        "so_luong_ton": int(sp.get("soLuongTon", 0)),  # NEW
     }
 
-    # Tên danh mục
     cat_name = "Khác"
     cat_id = sp.get("danhMucId")
     if isinstance(cat_id, ObjectId):
@@ -112,7 +107,6 @@ def product_detail(request, sp_id):
             cat_name = cat.get("tenDanhMuc") or "Khác"
     prod["danh_muc_ten"] = cat_name
 
-    # Sản phẩm liên quan (cùng danh mục, khác id này), tối đa 6
     related = []
     q = {"danhMucId": cat_id} if isinstance(cat_id, ObjectId) else {}
     for rel in sanpham.find(q).limit(12):
@@ -124,6 +118,7 @@ def product_detail(request, sp_id):
             "gia": rel.get("gia", 0),
             "hinh_anh": (rel.get("hinhAnh") if isinstance(rel.get("hinhAnh"), list)
                         else [rel.get("hinhAnh")] if rel.get("hinhAnh") else []),
+            "so_luong_ton": int(rel.get("soLuongTon", 0)),  # NEW
         })
         if len(related) >= 6:
             break
@@ -143,6 +138,7 @@ def product_by_category(request, cat_id):
         sp["mo_ta"] = sp.get("moTa") or ""
         imgs = sp.get("hinhAnh") or []
         sp["hinh_anh"] = imgs if isinstance(imgs, list) else [imgs]
+        sp["so_luong_ton"] = int(sp.get("soLuongTon", 0))  # NEW
 
     return render(request, "customer/category.html", {"products": products})
 

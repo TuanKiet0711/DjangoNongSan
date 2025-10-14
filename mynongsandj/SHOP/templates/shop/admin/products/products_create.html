@@ -18,7 +18,6 @@
 
       <div class="mb-3">
         <label class="form-label fw-semibold" for="gia">Giá (VNĐ)</label>
-        <!-- input text để format dấu phẩy -->
         <input
           type="text"
           id="gia"
@@ -28,6 +27,21 @@
           pattern="[0-9,]*"
           placeholder="Nhập giá"
           autocomplete="off"
+        />
+      </div>
+
+      <!-- NEW: Tồn kho -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="so_luong_ton">Tồn kho</label>
+        <input
+          type="number"
+          id="so_luong_ton"
+          class="form-control"
+          required
+          min="0"
+          step="1"
+          placeholder="Nhập số lượng tồn"
+          value="0"
         />
       </div>
 
@@ -94,6 +108,7 @@
   const fileInput = document.getElementById('hinh_anh')
   const preview = document.getElementById('preview_img')
   const giaInput = document.getElementById('gia')
+  const tonInput = document.getElementById('so_luong_ton')
 
   // Danh mục dropdown
   const dmHidden = document.getElementById('danh_muc_id')
@@ -152,6 +167,7 @@
     const giaRaw = giaInput.value.trim()
     const gia = parseInt(giaRaw.replace(/[^\d]/g, ''), 10) || 0
     const danh_muc_id = dmHidden.value
+    const so_luong_ton = parseInt(tonInput.value || '0', 10) || 0
 
     if (!ten || !danh_muc_id) {
       if (!danh_muc_id) dmError.classList.remove('d-none')
@@ -164,6 +180,7 @@
     formData.append('mo_ta', mo_ta)
     formData.append('gia', gia)
     formData.append('danh_muc_id', danh_muc_id)
+    formData.append('so_luong_ton', so_luong_ton) // NEW
     if (fileInput.files.length > 0) {
       formData.append('hinh_anh', fileInput.files[0])
     }

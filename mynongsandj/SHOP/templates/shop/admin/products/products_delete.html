@@ -19,6 +19,9 @@
       <strong>Giá:</strong> <span id="productPrice">Đang tải…</span>
     </div>
     <div class="mb-2">
+      <strong>Tồn kho:</strong> <span id="productStock">Đang tải…</span>
+    </div>
+    <div class="mb-2">
       <strong>Mô tả:</strong>
       <div id="productDesc" class="small text-muted"></div>
     </div>
@@ -39,35 +42,52 @@
 <script>
 (async function(){
   const id = "{{ product_id }}";
+
   function getCookie(name){
     let v=null;
-    if(document.cookie)for(let c of document.cookie.split(';')){
-      c=c.trim();
-      if(c.startsWith(name+'=')){v=decodeURIComponent(c.split('=')[1]);break}
+    if(document.cookie){
+      for(let c of document.cookie.split(';')){
+        c=c.trim();
+        if(c.startsWith(name+'=')){ v=decodeURIComponent(c.split('=')[1]); break; }
+      }
     }
     return v;
   }
   const CSRF = getCookie('csrftoken');
 
-  // load product info
+  // Helper: format số có dấu phẩy
+  const fmt = (n) => (Number(n||0)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  // load product info (API trả camelCase)
   const res = await fetch(`/api/products/${id}/`);
   if(res.ok){
     const data = await res.json();
-    document.getElementById('productName').textContent = data.ten_san_pham || '(không xác định)';
-    document.getElementById('productCategory').textContent = data.danh_muc_id || 'Chưa phân loại';
-    // Giá có dấu phẩy
-    const price = (data.gia || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    document.getElementById('productPrice').textContent = price + ' đ';
-    document.getElementById('productDesc').textContent = data.mo_ta || '';
-    if(data.hinh_anh && data.hinh_anh.length>0){
+
+    // Tên / mô tả
+    document.getElementById('productName').textContent = data.tenSanPham || '(không xác định)';
+    document.getElementById('productDesc').textContent = data.moTa || '';
+
+    // Danh mục: tạm hiển thị ID (nếu muốn tên, có thể truyền sẵn map tên danh mục từ view)
+    document.getElementById('productCategory').textContent = data.danhMucId || 'Chưa phân loại';
+
+    // Giá / tồn kho
+    document.getElementById('productPrice').textContent = fmt(data.gia || 0) + ' đ';
+    document.getElementById('productStock').textContent = String(data.soLuongTon || 0);
+
+    // Ảnh: hỗ trợ cả URL tuyệt đối và đường dẫn tương đối trong /media
+    const imgs = Array.isArray(data.hinhAnh) ? data.hinhAnh : [];
+    if(imgs.length > 0){
+      const first = imgs[0] || '';
+      const src = /^https?:\/\//i.test(first) ? first : ('/media/' + first);
       const img = document.getElementById('productImage');
-      img.src = '/media/' + data.hinh_anh[0];
+      img.src = src;
       img.style.display='block';
     }
   } else {
     document.getElementById('productName').textContent = 'Không tìm thấy';
   }
 
+  // Xóa
   document.getElementById('btnDelete').addEventListener('click', async ()=>{
     if(!confirm('Xóa sản phẩm này?')) return;
     const r = await fetch(`/api/products/${id}/`, {

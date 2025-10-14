@@ -5,6 +5,7 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from functools import wraps
 from bson import ObjectId
+from pymongo import ReturnDocument
 import json
 
 from ..database import donhang, sanpham, giohang
@@ -83,7 +84,7 @@ def _get_cart_items(uid: ObjectId):
         if not sp_oid:
             continue
         qty = _int(r.get("soLuong") or r.get("quantity") or 1, 1)
-        items.append({"sanPhamId": sp_oid, "soLuong": qty})
+        items.append({"sanPhamId": sp_oid, "soLuong": max(qty, 1)})
     return items
 
 def _map_product(sp):
@@ -141,11 +142,16 @@ def orders_list(request):
     return JsonResponse({"items": items}, json_dumps_params={"ensure_ascii": False})
 
 
-# ================ CHECKOUT ==================
+# ================ CHECKOUT (TRỪ TỒN KHO) ==================
 @csrf_exempt
 @require_http_methods(["POST"])
 @require_login_api
 def orders_checkout(request):
+    """
+    Trừ tồn kho ATOMIC khi tạo đơn:
+    - find_one_and_update với filter soLuongTon >= qty
+    - rollback nếu bất kỳ item nào fail
+    """
     err = _json_required(request)
     if err:
         return err
@@ -155,77 +161,74 @@ def orders_checkout(request):
         return JsonResponse({"error": "invalid_json"}, status=400)
 
     buyNowProductId = data.get("buyNowProductId")
-    buyNowQuantity = _int(data.get("buyNowQuantity", 1))
+    buyNowQuantity = max(_int(data.get("buyNowQuantity", 1), 1), 1)
     shipping = data.get("shipping", {}) or {}
     paymentMethod = _pm(data.get("paymentMethod", "cod"))
 
-    items = []
-    tong_tien = 0
-
-    # 🔹 Helper kiểm tra & trừ tồn (dùng đúng field trong DB: soLuongTon)
-    def check_and_deduct_stock(sp_oid, qty):
-        sp = sanpham.find_one({"_id": sp_oid})
-        if not sp:
-            raise ValueError("product_not_found")
-        ton = _int(sp.get("soLuongTon", 0))
-        if ton < qty:
-            raise ValueError(f"Sản phẩm '{sp.get('tenSanPham')}' không đủ tồn kho (còn {ton})")
-        # ✅ Trừ đúng field hiện tại
-        sanpham.update_one({"_id": sp_oid}, {"$set": {"soLuongTon": ton - qty}})
-        return sp
-
-    # --- 🟢 MUA NGAY ---
+    # Gom items cần mua
     if buyNowProductId:
         sp_oid = _oid(buyNowProductId)
         if not sp_oid:
             return JsonResponse({"error": "invalid_product_id"}, status=400)
-
-        try:
-            sp = check_and_deduct_stock(sp_oid, buyNowQuantity)
-        except ValueError as e:
-            return JsonResponse({"error": str(e)}, status=400)
-
-        ten, don_gia, hinh = _map_product(sp)
-        tt = don_gia * buyNowQuantity
-        items.append({
-            "sanPhamId": sp_oid,
-            "tenSanPham": ten,
-            "hinhAnh": hinh,
-            "soLuong": buyNowQuantity,
-            "donGia": don_gia,
-            "thanhTien": tt,
-        })
-        tong_tien += tt
-
-    # --- 🟢 TỪ GIỎ HÀNG ---
+        requested = [{"sanPhamId": sp_oid, "soLuong": buyNowQuantity}]
     else:
-        cart_items = _get_cart_items(request.user_oid)
-        if not cart_items:
+        requested = _get_cart_items(request.user_oid)
+        if not requested:
             return JsonResponse({"error": "cart_empty"}, status=400)
 
-        for c in cart_items:
-            sp_oid = c["sanPhamId"]
-            sl = max(_int(c.get("soLuong", 1)), 1)
-            try:
-                sp = check_and_deduct_stock(sp_oid, sl)
-            except ValueError as e:
-                return JsonResponse({"error": str(e)}, status=400)
+    to_decrement = []
+    items = []
+    tong_tien = 0
 
-            ten, don_gia, hinh = _map_product(sp)
-            tt = don_gia * sl
+    def dec_stock_atomic(sp_oid: ObjectId, qty: int):
+        before = sanpham.find_one({"_id": sp_oid}, {"tenSanPham": 1, "gia": 1, "hinhAnh": 1, "soLuongTon": 1})
+        if not before:
+            return None, None
+        updated = sanpham.find_one_and_update(
+            {"_id": sp_oid, "soLuongTon": {"$gte": qty}},
+            {"$inc": {"soLuongTon": -qty}},
+            return_document=ReturnDocument.AFTER,
+        )
+        return updated, before
+
+    try:
+        for req in requested:
+            sp_oid = req["sanPhamId"]
+            qty = max(_int(req["soLuong"], 1), 1)
+
+            updated, before = dec_stock_atomic(sp_oid, qty)
+            if not before:
+                raise ValueError("product_not_found")
+            if not updated:
+                ten_sp = (before.get("tenSanPham") or "").strip() or "Sản phẩm"
+                ton = _int(before.get("soLuongTon"), 0)
+                raise ValueError(f"Sản phẩm '{ten_sp}' không đủ tồn kho (còn {ton})")
+
+            to_decrement.append({"_id": sp_oid, "qty": qty})
+            ten, don_gia, hinh = _map_product(before)
+            tt = don_gia * qty
             items.append({
                 "sanPhamId": sp_oid,
                 "tenSanPham": ten,
                 "hinhAnh": hinh,
-                "soLuong": sl,
+                "soLuong": qty,
                 "donGia": don_gia,
                 "thanhTien": tt,
             })
             tong_tien += tt
 
+    except ValueError as e:
+        for rec in to_decrement:
+            sanpham.update_one({"_id": rec["_id"]}, {"$inc": {"soLuongTon": rec["qty"]}})
+        return JsonResponse({"error": str(e)}, status=400)
+    except Exception:
+        for rec in to_decrement:
+            sanpham.update_one({"_id": rec["_id"]}, {"$inc": {"soLuongTon": rec["qty"]}})
+        return JsonResponse({"error": "stock_update_failed"}, status=500)
+
+    if not buyNowProductId:
         giohang.delete_many({"taiKhoanId": request.user_oid})
 
-    # 🧾 Tạo đơn hàng
     now = timezone.now()
     doc = {
         "taiKhoanId": request.user_oid,
@@ -242,10 +245,19 @@ def orders_checkout(request):
         "trangThai": "cho_xu_ly",
         "ngayTao": now,
         "ngayCapNhat": now,
+        # cờ chống hoàn kho lặp lại khi hủy
+        "restockedOnCancel": False,
     }
     _apply_legacy_root_fields(doc)
-    result = donhang.insert_one(doc)
-    return JsonResponse({"created": str(result.inserted_id)}, status=201)
+
+    try:
+        result = donhang.insert_one(doc)
+        return JsonResponse({"created": str(result.inserted_id)}, status=201)
+    except Exception:
+        # Tạo đơn fail -> hoàn kho lại
+        for rec in to_decrement:
+            sanpham.update_one({"_id": rec["_id"]}, {"$inc": {"soLuongTon": rec["qty"]}})
+        return JsonResponse({"error": "create_order_failed"}, status=500)
 
 
 # ================ DETAIL / UPDATE / DELETE ==================
@@ -283,7 +295,7 @@ def order_detail(request, id):
             "shipping": ship,
         }, json_dumps_params={"ensure_ascii": False})
 
-    # ----- PUT (update hoặc hủy) -----
+    # ----- PUT (update trạng thái / hủy) -----
     if request.method == "PUT":
         err = _json_required(request)
         if err:
@@ -296,11 +308,27 @@ def order_detail(request, id):
         update = {}
         if "trangThai" in body:
             st = body.get("trangThai")
+            cur = d.get("trangThai", "")
+
+            # ===== HỦY ĐƠN: hoàn kho nếu chưa hoàn lần nào =====
             if st == "da_huy":
-                # chỉ cho phép huỷ khi chưa giao
-                if d.get("trangThai") not in ("cho_xu_ly", "da_xac_nhan"):
+                # chỉ cho phép hủy và hoàn kho khi chưa giao
+                allowed_for_cancel = ("cho_xu_ly", "da_xac_nhan")
+                if cur not in allowed_for_cancel and not d.get("restockedOnCancel", False):
                     return JsonResponse({"error": "cannot_cancel"}, status=400)
+
+                # nếu chưa hoàn kho lần nào -> hoàn kho
+                if not d.get("restockedOnCancel", False):
+                    for it in (d.get("items") or []):
+                        pid = it.get("sanPhamId")
+                        qty = _int(it.get("soLuong", 0), 0)
+                        if pid and qty > 0:
+                            sanpham.update_one({"_id": pid}, {"$inc": {"soLuongTon": qty}})
+                    update["restockedOnCancel"] = True
+
                 update["trangThai"] = "da_huy"
+
+            # ===== Các trạng thái khác =====
             elif st in ORDER_STATUSES:
                 update["trangThai"] = st
 
@@ -308,10 +336,12 @@ def order_detail(request, id):
             update["ngayCapNhat"] = timezone.now()
             donhang.update_one({"_id": oid}, {"$set": update})
             return JsonResponse({"updated": True})
+
         return JsonResponse({"error": "no_fields"}, status=400)
 
     # ----- DELETE -----
     if request.method == "DELETE":
+        # Tùy bài toán: nếu xóa đơn ở trạng thái chưa giao & chưa cancel -> có thể cân nhắc hoàn kho ở đây.
         donhang.delete_one({"_id": oid})
         return HttpResponse(status=204)
 

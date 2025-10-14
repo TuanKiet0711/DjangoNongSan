@@ -10,95 +10,38 @@
   .toolbar-tight {margin-bottom:.5rem!important;}
   .card-body-tight {padding:.5rem 1rem!important;}
   .table-flex {flex:1 1 auto; min-height:0; overflow:hidden;}
-
-  /* Ẩn messages mặc định của Django trong page */
   .alert, .messages, .django-messages {display:none !important;}
 
-  /* Searchbar */
   .searchbar { --h: 38px; flex:1 1 auto; }
   .searchbar .inputbox {position:relative; flex:1 1 auto; min-width:300px;}
-  .searchbar .inputbox .icon {
-    position:absolute; left:12px; top:50%; transform:translateY(-50%);
-    opacity:.65; color:#6c757d;
-  }
-  .searchbar .inputbox input.form-control {
-    height:var(--h); padding-left:38px; padding-right:40px;
-    border-radius:12px; border:1px solid rgba(0,0,0,.08);
-    box-shadow:0 6px 18px rgba(30,60,120,.06);
-  }
-  .searchbar .inputbox .btn-clear {
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    border:none; background:transparent; opacity:.5;
-  }
-  .searchbar .btn-find {
-    height:var(--h);
-    background:linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%);
-    color:#fff; border:none; font-weight:600; border-radius:12px;
-    padding:.35rem .9rem; box-shadow:0 8px 16px rgba(60,120,240,.18);
-  }
+  .searchbar .inputbox .icon {position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:.65; color:#6c757d;}
+  .searchbar .inputbox input.form-control {height:var(--h); padding-left:38px; padding-right:40px; border-radius:12px; border:1px solid rgba(0,0,0,.08); box-shadow:0 6px 18px rgba(30,60,120,.06);}
+  .searchbar .inputbox .btn-clear {position:absolute; right:10px; top:50%; transform:translateY(-50%); border:none; background:transparent; opacity:.5;}
+  .searchbar .btn-find {height:var(--h); background:linear-gradient(180deg,#4f8cff 0%,#3b78ff 100%); color:#fff; border:none; font-weight:600; border-radius:12px; padding:.35rem .9rem; box-shadow:0 8px 16px rgba(60,120,240,.18);}
   .btn-reset {border-radius:12px; height:var(--h); margin-left:8px;}
 
-  /* Thumb ảnh */
   .thumb-img {width:80px; height:60px; object-fit:cover; border-radius:4px; border:1px solid #ddd;}
 
-  /* Pagination dưới đáy card */
-  .pagination-fixed {
-    position:sticky; bottom:0; background:#fff;
-    border-top:1px solid rgba(0,0,0,.05);
-    padding:.5rem .75rem; display:flex; justify-content:flex-start; align-items:center;
-  }
+  .pagination-fixed {position:sticky; bottom:0; background:#fff; border-top:1px solid rgba(0,0,0,.05); padding:.5rem .75rem; display:flex; justify-content:flex-start; align-items:center;}
   .pagination-fixed .pagination {gap:4px; margin-bottom:0;}
-  .pagination-fixed .page-link {
-    min-width:34px; height:34px; padding:.25rem .6rem;
-    text-align:center; border-radius:50%!important;
-    color:#495057; border:none; background:#f8f9fa;
-    box-shadow:0 2px 6px rgba(0,0,0,.05);
-  }
+  .pagination-fixed .page-link {min-width:34px; height:34px; padding:.25rem .6rem; text-align:center; border-radius:50%!important; color:#495057; border:none; background:#f8f9fa; box-shadow:0 2px 6px rgba(0,0,0,.05);}
   .pagination-fixed .page-link:hover {background:#4f8cff; color:#fff;}
-  .pagination-fixed .page-item.active .page-link {
-    background:#3b78ff; color:#fff; box-shadow:0 4px 12px rgba(60,120,240,.25);
-  }
-  .pagination-fixed .page-item.disabled .page-link {
-    opacity:.5; pointer-events:none; background:#f1f1f1;
-  }
+  .pagination-fixed .page-item.active .page-link {background:#3b78ff; color:#fff; box-shadow:0 4px 12px rgba(60,120,240,.25);}
+  .pagination-fixed .page-item.disabled .page-link {opacity:.5; pointer-events:none; background:#f1f1f1;}
 
-  /* Toast góc phải */
-  .toast-container{
-    position:fixed;
-    top:16px;
-    right:16px;
-    z-index:1080;           /* nằm trên card & navbar */
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    pointer-events:none;    /* click xuyên nếu ngoài toast */
-  }
-  .toast{
-    min-width:220px;
-    max-width:320px;
-    background:#059669;     /* xanh success */
-    color:#fff;
-    padding:.6rem .9rem;
-    border-radius:12px;
-    box-shadow:0 8px 24px rgba(0,0,0,.2);
-    opacity:0;
-    transform:translateY(-10px);
-    transition:all .3s ease;
-    pointer-events:auto;    /* bản thân toast vẫn click được */
-  }
+  .toast-container{position:fixed; top:16px; right:16px; z-index:1080; display:flex; flex-direction:column; gap:8px; pointer-events:none;}
+  .toast{min-width:220px; max-width:320px; background:#059669; color:#fff; padding:.6rem .9rem; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.2); opacity:0; transform:translateY(-10px); transition:all .3s ease; pointer-events:auto;}
   .toast.show{opacity:1; transform:translateY(0);}
-  .toast.error{background:#dc2626;} /* màu đỏ khi lỗi */
+  .toast.error{background:#dc2626;}
 </style>
 
 <div class="admin-fixed">
-
   <!-- Toolbar -->
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 toolbar-tight">
     <form id="searchForm" class="d-flex searchbar" method="get" action="" style="min-width:420px">
       <div class="inputbox">
         <i class="bi bi-search icon"></i>
-        <input id="qInput" type="text" name="q" value="{{ q|default_if_none:'' }}"
-               class="form-control" placeholder="Tìm theo tên sản phẩm…">
+        <input id="qInput" type="text" name="q" value="{{ q|default_if_none:'' }}" class="form-control" placeholder="Tìm theo tên sản phẩm…">
         <button type="button" class="btn-clear d-none" id="btnClear" aria-label="Xóa tìm">
           <i class="bi bi-x-circle"></i>
         </button>
@@ -118,11 +61,12 @@
             <tr>
               <th style="width:12%">ID</th>
               <th style="width:18%">Tên sản phẩm</th>
-              <th style="width:18%">Danh mục</th>
+              <th style="width:16%">Danh mục</th>
               <th style="width:18%">Mô tả</th>
-              <th style="width:10%">Giá</th>
+              <th style="width:8%">Giá</th>
+              <th style="width:8%">Tồn kho</th>  <!-- NEW -->
               <th style="width:10%">Ảnh</th>
-              <th class="text-end" style="width:14%">Hành động</th>
+              <th class="text-end" style="width:10%">Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -134,6 +78,18 @@
                 <td>{{ sp.danh_muc }}</td>
                 <td class="small text-muted">{{ sp.mo_ta|truncatechars:50 }}</td>
                 <td>{{ sp.gia|intcomma }} đ</td>
+
+                <!-- NEW: cột tồn kho -->
+                <td>
+                  {% if sp.so_luong_ton == 0 %}
+                    <span class="badge text-bg-danger">Hết (0)</span>
+                  {% elif sp.so_luong_ton < 10 %}
+                    <span class="badge text-bg-warning text-dark">Thấp ({{ sp.so_luong_ton }})</span>
+                  {% else %}
+                    <span class="badge text-bg-success">Còn {{ sp.so_luong_ton }}</span>
+                  {% endif %}
+                </td>
+
                 <td>
                   {% if sp.hinh_anh %}
                     <img src="/media/{{ sp.hinh_anh }}" class="thumb-img" alt="Ảnh sản phẩm {{ sp.ten }}"/>
@@ -152,7 +108,7 @@
               </tr>
             {% endfor %}
           {% else %}
-            <tr><td colspan="7" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
+            <tr><td colspan="8" class="text-center text-muted py-4">Không có dữ liệu</td></tr>
           {% endif %}
           </tbody>
         </table>
@@ -181,12 +137,10 @@
   </div>
 </div>
 
-<!-- Toast container -->
 <div class="toast-container" id="toastBox" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 (function(){
-  // ====== Searchbar ======
   const qInput = document.getElementById('qInput');
   const btnClear = document.getElementById('btnClear');
   const form = document.getElementById('searchForm');
@@ -211,32 +165,20 @@
   }
   toggleClear();
 
-  // ====== Toast API ======
-  // Dùng: window.showToast("Nội dung", "success"|"error", {timeout:3000})
   function showToast(msg="Thao tác thành công", type="success", opts={}){
     const box = document.getElementById('toastBox');
-    if(!box){ console.warn('Không tìm thấy #toastBox'); return; }
-
+    if(!box) return;
     const el = document.createElement('div');
     el.className = 'toast' + (type === 'error' ? ' error' : '');
     el.role = 'status';
     el.textContent = msg;
-
     box.appendChild(el);
-    // kích hoạt hiệu ứng
     requestAnimationFrame(()=> el.classList.add('show'));
-
     const timeout = Number.isFinite(opts.timeout) ? opts.timeout : 3000;
-    setTimeout(()=>{
-      el.classList.remove('show');
-      setTimeout(()=> el.remove(), 300); // đợi transition
-    }, timeout);
+    setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=> el.remove(), 300); }, timeout);
   }
-  // expose global
   window.showToast = showToast;
 
-  // ====== Render Django messages ra toast ======
-  // Yêu cầu: view set message.success(...) / message.error(...)
   {% if messages %}
     {% for m in messages %}
       showToast("{{ m|escapejs }}", "{% if 'error' in m.tags %}error{% else %}success{% endif %}");

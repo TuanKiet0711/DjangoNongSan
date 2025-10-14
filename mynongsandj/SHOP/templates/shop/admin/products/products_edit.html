@@ -30,6 +30,20 @@
         />
       </div>
 
+      <!-- NEW: Tồn kho -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold" for="so_luong_ton">Tồn kho</label>
+        <input
+          type="number"
+          id="so_luong_ton"
+          class="form-control"
+          required
+          min="0"
+          step="1"
+          placeholder="Nhập số lượng tồn"
+        />
+      </div>
+
       <div class="mb-3">
         <label class="form-label fw-semibold">Hình ảnh</label>
         <input type="file" id="hinh_file" class="form-control mb-2" accept="image/*">
@@ -97,6 +111,7 @@
   const $ten = document.getElementById('ten');
   const $mo_ta = document.getElementById('mo_ta');
   const $gia = document.getElementById('gia');
+  const $ton = document.getElementById('so_luong_ton');
   const $file = document.getElementById('hinh_file');
   const $url = document.getElementById('hinh_url');
   const $preview = document.getElementById('preview_img');
@@ -115,7 +130,7 @@
     dmError.classList.add('d-none');
   });
 
-  // Format giá: dấu phẩy phân cách nghìn
+  // Format giá
   const formatComma = (digitsStr) => {
     const clean = (digitsStr || '').replace(/[^\d]/g, '');
     if (!clean) return '';
@@ -134,7 +149,7 @@
     e.target.value = formatComma(e.target.value);
   });
 
-  // Load dữ liệu hiện tại
+  // Load dữ liệu hiện tại (API trả camelCase)
   const res = await fetch(`/api/products/${id}/`);
   if (!res.ok) {
     alert('Không tìm thấy sản phẩm');
@@ -143,19 +158,23 @@
   }
   const cur = await res.json();
 
-  $ten.value = cur.ten_san_pham || '';
-  $mo_ta.value = cur.mo_ta || '';
+  $ten.value = cur.tenSanPham || '';
+  $mo_ta.value = cur.moTa || '';
   $gia.value = formatComma(String(cur.gia || 0));
-  dmHidden.value = cur.danh_muc_id || '';
-  if (cur.danh_muc_id) {
-    const activeItem = dmMenu.querySelector(`[data-id="${cur.danh_muc_id}"]`);
+  $ton.value = String(cur.soLuongTon || 0);
+
+  dmHidden.value = cur.danhMucId || '';
+  if (cur.danhMucId) {
+    const activeItem = dmMenu.querySelector(`[data-id="${cur.danhMucId}"]`);
     if (activeItem) dmLabel.textContent = activeItem.textContent.trim();
   }
 
-  if (cur.hinh_anh && cur.hinh_anh.length > 0) {
-    $preview.src = '/media/' + cur.hinh_anh[0];
+  const firstImg = (cur.hinhAnh && cur.hinhAnh.length > 0) ? cur.hinhAnh[0] : '';
+  if (firstImg) {
+    const src = firstImg.startsWith('http') ? firstImg : ('/media/' + firstImg);
+    $preview.src = src;
     $preview.style.display = 'block';
-    $url.value = cur.hinh_anh[0];
+    $url.value = firstImg;
   }
 
   // Preview khi chọn file
@@ -191,6 +210,7 @@
     fd.append('mo_ta', $mo_ta.value.trim());
     fd.append('gia', String(parseInt($gia.value.replace(/[^\d]/g, ''), 10) || 0));
     fd.append('danh_muc_id', dmHidden.value);
+    fd.append('so_luong_ton', String(parseInt($ton.value || '0', 10) || 0)); // NEW
 
     if ($file.files.length > 0) {
       fd.append('hinh_anh', $file.files[0]);

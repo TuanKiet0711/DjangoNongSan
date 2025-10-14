@@ -6,69 +6,25 @@
 
 {% block content %}
 <style>
-  :root{
-    --green:#2e7d32;
-    --green-600:#1e5f22;
-    --accent:#ff9800;
-    --muted:#6c757d;
-  }
-
-  /* Layout spacing */
+  :root { --green:#2e7d32; --green-600:#1e5f22; --accent:#ff9800; --muted:#6c757d; }
   .cart-section{padding-top:2rem;padding-bottom:2rem}
   .cart-title{display:flex;align-items:center;gap:.6rem;margin-bottom:1.25rem}
   .cart-title i{font-size:1.35rem;color:var(--green)}
-
-  /* Table look */
-  .cart-table thead th{
-    background:linear-gradient(180deg,#f9fcfa,#f1f7f2);
-    color:#2f3b2f;border-bottom:1px solid #e7efe9; font-weight:700;
-  }
-  .cart-table tbody tr{
-    transition:.2s; --shadow:0 2px 8px rgba(0,0,0,.06)
-  }
-  .cart-table tbody tr:hover{
-    background:#fbfdfb; box-shadow:var(--shadow)
-  }
-  .cart-img{
-    width:80px;height:80px;object-fit:cover;border-radius:12px;border:1px solid #eef3ee;
-  }
+  .cart-table thead th{background:linear-gradient(180deg,#f9fcfa,#f1f7f2);color:#2f3b2f;border-bottom:1px solid #e7efe9;font-weight:700}
+  .cart-table tbody tr{transition:.2s}
+  .cart-table tbody tr:hover{background:#fbfdfb}
+  .cart-img{width:80px;height:80px;object-fit:cover;border-radius:12px;border:1px solid #eef3ee}
   .qty-wrap .btn{border-radius:12px}
-  .qty-wrap input{
-    border-radius:12px; max-width:90px; height:40px;
-  }
-  .btn-outline-success{--bs-btn-color:var(--green);--bs-btn-border-color:var(--green);
-    --bs-btn-hover-bg:var(--green);--bs-btn-hover-border-color:var(--green);
-  }
-
-  /* Card summary sticky */
-  .summary-card{
-    border:1px solid #e6efe8;
-    box-shadow:0 10px 24px rgba(0,0,0,.06);
-    border-radius:16px;
-    position:sticky; top:88px;
-  }
+  .qty-wrap input{border-radius:12px;max-width:90px;height:40px}
+  .summary-card{border:1px solid #e6efe8;box-shadow:0 10px 24px rgba(0,0,0,.06);border-radius:16px;position:sticky;top:88px}
   .summary-card .card-title{font-weight:800}
   .summary-row{display:flex;justify-content:space-between;align-items:center;margin:.25rem 0;color:var(--muted)}
   .summary-total{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:1.25rem}
-
-  /* Buttons row */
-  .toolbar{
-    gap:.6rem;margin-top:1rem
-  }
+  .toolbar{gap:.6rem;margin-top:1rem}
   .btn-pill{border-radius:999px}
-  .btn-danger{box-shadow:0 6px 16px rgba(220,53,69,.12)}
-  .btn-success{box-shadow:0 6px 16px rgba(46,125,50,.16)}
   .btn-checkout{font-weight:800}
-
-  /* Empty state */
-  .empty-box i{color:var(--green)}
-  .empty-box a{font-weight:700}
-
-  /* Small tweaks on narrow screens */
-  @media (max-width: 991.98px){
-    .cart-img{width:64px;height:64px}
-    .qty-wrap input{max-width:72px;height:36px}
-  }
+  .empty-box i{color:var(--green)} .empty-box a{font-weight:700}
+  @media (max-width: 991.98px){ .cart-img{width:64px;height:64px} .qty-wrap input{max-width:72px;height:36px} }
 </style>
 
 <section class="cart-section">
@@ -86,7 +42,7 @@
 
     <!-- Content -->
     <div id="cartWrap" class="row g-4 d-none">
-      <!-- LEFT: items -->
+      <!-- LEFT -->
       <div class="col-lg-8">
         <div class="table-responsive">
           <table class="table cart-table align-middle">
@@ -114,7 +70,7 @@
         </div>
       </div>
 
-      <!-- RIGHT: summary -->
+      <!-- RIGHT -->
       <div class="col-lg-4">
         <div class="card summary-card">
           <div class="card-body">
@@ -147,36 +103,17 @@
 {% block extra_js %}
 <script>
 (() => {
-  // ---------- helpers ----------
-  const money = (v) => {
-    try { v = Number(v||0); } catch(e) { v = 0; }
-    return v.toLocaleString('vi-VN') + ' VNĐ';
+  // -------- helpers --------
+  const money = (v) => (Number(v||0)).toLocaleString('vi-VN') + ' VNĐ';
+  const CSRF = document.cookie.split(';').map(s=>s.trim()).find(s=>s.startsWith('csrftoken='))?.split('=')[1] || '';
+  // build URL ảnh an toàn: nếu tương đối -> prefix /media/
+  const imgUrl = (p) => {
+    if (!p) return '{% static "images/placeholder/produce.png" %}';
+    if (p.startsWith('/') || p.startsWith('http')) return p;
+    return '/media/' + p.replace(/^\/+/, '');
   };
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
-        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
-        }
-      }
-    }
-    return cookieValue;
-  }
-  const CSRF = getCookie('csrftoken');
 
-  const toastEl = document.getElementById('cartToast');
-  function showToast(msg, isError=false) {
-    toastEl.classList.remove('bg-success','bg-danger');
-    toastEl.classList.add(isError ? 'bg-danger' : 'bg-success');
-    toastEl.querySelector('.toast-body').textContent = msg;
-    new bootstrap.Toast(toastEl, { delay: 1800 }).show();
-  }
-
-  // ---------- elements ----------
+  // -------- elements --------
   const elEmpty = document.getElementById('cartEmpty');
   const elWrap  = document.getElementById('cartWrap');
   const elBody  = document.getElementById('cartBody');
@@ -186,49 +123,35 @@
   const btnClear = document.getElementById('btnClearCart');
   const btnCheckout = document.getElementById('btnCheckout');
 
-  // ---------- data loader ----------
+  // -------- load --------
   async function loadCart() {
-    const res = await fetch("{% url 'shop:api_cart_list' %}");
-    if (res.status === 401) {
-      window.location.href = "{% url 'shop:auth_login_page' %}";
-      return;
-    }
-    if (!res.ok) {
-      elWrap.classList.add('d-none');
-      elEmpty.classList.remove('d-none');
-      return;
-    }
+    const res = await fetch("{% url 'shop:api_cart_list' %}", { credentials:'same-origin' });
+    if (res.status === 401) { location.href = "{% url 'shop:auth_login_page' %}"; return; }
+    if (!res.ok) { elWrap.classList.add('d-none'); elEmpty.classList.remove('d-none'); return; }
     const data = await res.json();
     renderCart(data.items || [], data.total || 0, data.count || 0);
     if (window.updateCartBadge) window.updateCartBadge(data.count, data.total);
   }
 
-  // ---------- render ----------
+  // -------- render --------
   function renderCart(items, total, count) {
     elBody.innerHTML = '';
     if (!items.length) {
-      elWrap.classList.add('d-none');
-      elEmpty.classList.remove('d-none');
-      sumCount.textContent = '0';
-      sumSubtotal.textContent = '0';
-      sumTotal.textContent = '0';
-      btnCheckout.classList.add('disabled');
-      return;
+      elWrap.classList.add('d-none'); elEmpty.classList.remove('d-none');
+      sumCount.textContent = '0'; sumSubtotal.textContent = '0'; sumTotal.textContent = '0';
+      btnCheckout.classList.add('disabled'); return;
     }
-    elEmpty.classList.add('d-none');
-    elWrap.classList.remove('d-none');
+    elEmpty.classList.add('d-none'); elWrap.classList.remove('d-none');
 
-    let subtotal = 0;
-    let qtySum = 0;
+    let subtotal = 0, qtySum = 0;
     items.forEach(item => {
       subtotal += (item.subtotal || 0);
-      qtySum += (item.qty || 0);
+      qtySum   += (item.qty || 0);
       const tr = document.createElement('tr');
-      tr.dataset.id = item.id; // id = sanPhamId
+      tr.dataset.id = item.id; // sanPhamId
       tr.innerHTML = `
         <td>
-          <img src="${item.image ? '{{ MEDIA_URL }}'+item.image : '{% static "images/placeholder/produce.png" %}'}"
-               class="cart-img" alt="${item.name}">
+          <img src="${imgUrl(item.image)}" class="cart-img" alt="${item.name}">
         </td>
         <td class="fw-semibold">${item.name}</td>
         <td class="text-end">${money(item.price)}</td>
@@ -237,8 +160,7 @@
             <button class="btn btn-outline-success btn-pill btn-dec" type="button" title="Giảm">
               <i class="bi bi-dash"></i>
             </button>
-            <input type="number" min="1" class="form-control text-center qty-input"
-                   value="${item.qty}">
+            <input type="number" min="1" class="form-control text-center qty-input" value="${item.qty}">
             <button class="btn btn-outline-success btn-pill btn-inc" type="button" title="Tăng">
               <i class="bi bi-plus"></i>
             </button>
@@ -249,27 +171,24 @@
           <button class="btn btn-outline-danger btn-sm btn-pill btn-remove" title="Xóa">
             <i class="bi bi-x-lg"></i>
           </button>
-        </td>
-      `;
+        </td>`;
       elBody.appendChild(tr);
     });
 
-    // summary
     sumCount.textContent = String(qtySum);
     sumSubtotal.textContent = money(subtotal);
     sumTotal.textContent = money(subtotal);
     btnCheckout.classList.remove('disabled');
   }
 
-  // ---------- actions ----------
+  // -------- actions --------
   elBody.addEventListener('click', async (e) => {
-    const tr = e.target.closest('tr');
-    if (!tr) return;
+    const tr = e.target.closest('tr'); if (!tr) return;
     const id = tr.dataset.id;
     const qtyInput = tr.querySelector('.qty-input');
 
     if (e.target.closest('.btn-inc')) {
-      let newQty = (parseInt(qtyInput.value,10) || 1) + 1;
+      const newQty = (parseInt(qtyInput.value,10) || 1) + 1;
       await updateQty(id, newQty);
     }
     if (e.target.closest('.btn-dec')) {
@@ -284,59 +203,49 @@
 
   elBody.addEventListener('change', async (e) => {
     if (!e.target.classList.contains('qty-input')) return;
-    const tr = e.target.closest('tr');
-    if (!tr) return;
+    const tr = e.target.closest('tr'); if (!tr) return;
     const id = tr.dataset.id;
-    let val = parseInt(e.target.value,10);
-    if (isNaN(val) || val < 1) val = 1;
+    let val = parseInt(e.target.value,10); if (isNaN(val) || val < 1) val = 1;
     await updateQty(id, val);
   });
 
   btnClear.addEventListener('click', async () => {
     if (!confirm('Bạn chắc muốn xóa toàn bộ giỏ hàng?')) return;
     const res = await fetch("{% url 'shop:api_cart_clear' %}", {
-      method: 'POST',
-      headers: {'X-CSRFToken': CSRF}
+      method:'POST', headers:{'X-CSRFToken': CSRF}, credentials:'same-origin'
     });
-    if (res.ok) {
-      showToast('Đã xóa giỏ hàng');
-      loadCart();
-    } else {
-      showToast('Không thể xóa giỏ hàng', true);
-    }
+    if (res.ok) { loadCart(); } else { alert('Không thể xóa giỏ hàng'); }
   });
 
-  // ---------- API wrappers ----------
-  async function updateQty(spId, qty) {
+  // -------- API wrappers --------
+  async function updateQty(spId, qty){
     const url = "{% url 'shop:api_cart_update' sp_id='SPID' %}".replace('SPID', spId);
     const res = await fetch(url, {
-      method: 'POST',
-      headers: {'X-CSRFToken': CSRF, 'Accept': 'application/json'},
-      credentials: 'same-origin',
+      method:'POST',
+      headers:{'X-CSRFToken': CSRF, 'Accept':'application/json'},
+      credentials:'same-origin',
       body: new URLSearchParams({ qty: String(qty) })
     });
-    if (res.status === 401) { window.location.href = "{% url 'shop:auth_login_page' %}"; return; }
-    if (!res.ok) { showToast('Cập nhật số lượng thất bại', true); return; }
+    if (res.status === 401) { location.href = "{% url 'shop:auth_login_page' %}"; return; }
+    if (!res.ok) { alert('Cập nhật số lượng thất bại'); return; }
     const data = await res.json().catch(()=>({}));
     if (window.updateCartBadge) window.updateCartBadge(data.count, data.total);
     loadCart();
   }
 
-  async function removeItem(spId) {
+  async function removeItem(spId){
     const url = "{% url 'shop:api_cart_remove' sp_id='SPID' %}".replace('SPID', spId);
     const res = await fetch(url, {
-      method: 'POST',
-      headers: {'X-CSRFToken': CSRF, 'Accept': 'application/json'},
-      credentials: 'same-origin'
+      method:'POST', headers:{'X-CSRFToken': CSRF, 'Accept':'application/json'}, credentials:'same-origin'
     });
-    if (res.status === 401) { window.location.href = "{% url 'shop:auth_login_page' %}"; return; }
-    if (!res.ok) { showToast('Xóa sản phẩm thất bại', true); return; }
+    if (res.status === 401) { location.href = "{% url 'shop:auth_login_page' %}"; return; }
+    if (!res.ok) { alert('Xóa sản phẩm thất bại'); return; }
     const data = await res.json().catch(()=>({}));
     if (window.updateCartBadge) window.updateCartBadge(data.count, data.total);
     loadCart();
   }
 
-  // ---------- init ----------
+  // init
   loadCart();
 })();
 </script>

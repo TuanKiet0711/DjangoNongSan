@@ -1,4 +1,4 @@
-# shop/views/product_api.py
+# shop/views/sanpham_view.py
 from django.http import JsonResponse, HttpResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -62,7 +62,9 @@ def _product_to_snake(sp):
         "mo_ta": sp.get("moTa", ""),
         "gia": int(sp.get("gia", 0)),
         "hinh_anh": sp.get("hinhAnh", []),
-        "danh_muc_id": str(sp.get("danhMucId")) if sp.get("danhMucId") else None
+        "danh_muc_id": str(sp.get("danhMucId")) if sp.get("danhMucId") else None,
+        # NEW: tồn kho
+        "so_luong_ton": int(sp.get("soLuongTon", 0)),
     }
 
 # ================= LIST ==================
@@ -88,10 +90,15 @@ def products_list(request):
     total = san_pham.count_documents(filter_)
     skip = (page - 1) * page_size
 
-    cursor = (san_pham.find(filter_, {"tenSanPham": 1, "gia": 1, "hinhAnh": 1, "danhMucId": 1, "moTa": 1})
-                      .sort("tenSanPham", 1)
-                      .skip(skip)
-                      .limit(page_size))
+    cursor = (
+        san_pham.find(
+            filter_,
+            {"tenSanPham": 1, "gia": 1, "hinhAnh": 1, "danhMucId": 1, "moTa": 1, "soLuongTon": 1}  # NEW
+        )
+        .sort("_id", -1) 
+        .skip(skip)
+        .limit(page_size)
+    )
 
     items = [_product_to_snake(sp) for sp in cursor]
 
@@ -119,6 +126,12 @@ def products_create(request):
         except Exception:
             return JsonResponse({"error": "gia phải là số"}, status=400)
 
+        # NEW: tồn kho
+        try:
+            so_luong_ton = int(request.POST.get("so_luong_ton") or request.POST.get("soLuongTon") or 0)
+        except Exception:
+            so_luong_ton = 0
+
         hinh_anh_urls = []
         if "hinh_anh" in request.FILES or "hinhAnh" in request.FILES:
             file = request.FILES.get("hinh_anh") or request.FILES.get("hinhAnh")
@@ -131,6 +144,7 @@ def products_create(request):
             "moTa": mo_ta,
             "gia": gia,
             "hinhAnh": hinh_anh_urls,
+            "soLuongTon": so_luong_ton,  # NEW
         }
         if danh_muc_id:
             oid = _as_oid(danh_muc_id)
@@ -156,6 +170,7 @@ def products_create(request):
     gia_raw = _get_val(body, "gia", default=0)
     hinh_anh = _get_val(body, "hinh_anh", "hinhAnh", default=[]) or []
     danh_muc_id = _get_val(body, "danh_muc_id", "danhMucId")
+    so_luong_ton_raw = _get_val(body, "so_luong_ton", "soLuongTon", default=0)  # NEW
 
     if not ten:
         return JsonResponse({"error": "Thiếu ten_san_pham"}, status=400)
@@ -165,11 +180,17 @@ def products_create(request):
     except Exception:
         return JsonResponse({"error": "gia phải là số"}, status=400)
 
+    try:
+        so_luong_ton = int(so_luong_ton_raw or 0)  # NEW
+    except Exception:
+        so_luong_ton = 0
+
     doc = {
         "tenSanPham": ten,
         "moTa": mo_ta,
         "gia": gia,
         "hinhAnh": hinh_anh if isinstance(hinh_anh, list) else [hinh_anh],
+        "soLuongTon": so_luong_ton,  # NEW
     }
     if danh_muc_id:
         oid = _as_oid(danh_muc_id)
@@ -199,14 +220,14 @@ def product_detail(request, id):
         if not sp:
             return JsonResponse({"error": "Not found"}, status=404)
 
-        # ✅ Trả dữ liệu đầy đủ cho cả đơn hàng và admin
         return JsonResponse({
             "id": str(sp.get("_id")),
             "tenSanPham": sp.get("tenSanPham") or sp.get("ten") or sp.get("name", ""),
             "moTa": sp.get("moTa", ""),
             "gia": int(sp.get("gia", 0)),
             "hinhAnh": sp.get("hinhAnh", []),
-            "danhMucId": str(sp.get("danhMucId")) if sp.get("danhMucId") else None
+            "danhMucId": str(sp.get("danhMucId")) if sp.get("danhMucId") else None,
+            "soLuongTon": int(sp.get("soLuongTon", 0)),  # NEW
         }, json_dumps_params={"ensure_ascii": False})
 
     # ---------- PUT ----------
@@ -224,12 +245,13 @@ def product_detail(request, id):
             mo_ta = (data.get("mo_ta") or data.get("moTa") or "").strip()
             gia_raw = data.get("gia")
             danh_muc_id = data.get("danh_muc_id") or data.get("danhMucId")
+            so_luong_ton_raw = data.get("so_luong_ton") or data.get("soLuongTon")  # NEW
 
             if ten:
                 update["tenSanPham"] = ten
             if mo_ta:
                 update["moTa"] = mo_ta
-            if gia_raw:
+            if gia_raw is not None:
                 try:
                     update["gia"] = int(gia_raw)
                 except:
@@ -238,6 +260,11 @@ def product_detail(request, id):
                 oid_dm = _as_oid(danh_muc_id)
                 if oid_dm:
                     update["danhMucId"] = oid_dm
+            if so_luong_ton_raw is not None:  # NEW
+                try:
+                    update["soLuongTon"] = int(so_luong_ton_raw)
+                except:
+                    return JsonResponse({"error": "so_luong_ton phải là số"}, status=400)
 
             file_obj = files.get("hinh_anh") or files.get("hinhAnh")
             if file_obj:
@@ -270,6 +297,11 @@ def product_detail(request, id):
                 oid_dm = _as_oid(dm)
                 if oid_dm:
                     update["danhMucId"] = oid_dm
+            if "so_luong_ton" in body or "soLuongTon" in body:  # NEW
+                try:
+                    update["soLuongTon"] = int(_get_val(body, "so_luong_ton", "soLuongTon", default=0))
+                except:
+                    return JsonResponse({"error": "so_luong_ton phải là số"}, status=400)
 
         if not update:
             return JsonResponse({"error": "No fields to update"}, status=400)
@@ -301,7 +333,7 @@ def admin_products_list(request):
     if q:
         filter_["tenSanPham"] = {"$regex": q, "$options": "i"}
 
-    cursor = san_pham.find(filter_).sort("tenSanPham", 1)
+    cursor = san_pham.find(filter_).sort("_id", -1)
     cat_map = {str(c["_id"]): c.get("tenDanhMuc", "") for c in danhmuc.find({})}
 
     products = []
@@ -313,6 +345,7 @@ def admin_products_list(request):
             "gia": int(sp.get("gia", 0)),
             "hinh_anh": (sp.get("hinhAnh") or [None])[0] if sp.get("hinhAnh") else None,
             "danh_muc": cat_map.get(str(sp.get("danhMucId")), "Chưa phân loại"),
+            "so_luong_ton": int(sp.get("soLuongTon", 0)),  # NEW
         })
 
     paginator = Paginator(products, 6)
@@ -341,7 +374,13 @@ def product_create(request):
             messages.error(request, "Giá phải là số!")
             return redirect("shop:admin_product_create")
 
-        doc = {"tenSanPham": ten, "moTa": mo_ta, "gia": gia, "hinhAnh": []}
+        # NEW: nhận tồn kho từ form admin (nếu có)
+        try:
+            so_luong_ton = int(request.POST.get("so_luong_ton") or request.POST.get("soLuongTon") or 0)
+        except:
+            so_luong_ton = 0
+
+        doc = {"tenSanPham": ten, "moTa": mo_ta, "gia": gia, "hinhAnh": [], "soLuongTon": so_luong_ton}
         if danh_muc_id:
             oid = _as_oid(danh_muc_id)
             if not oid:

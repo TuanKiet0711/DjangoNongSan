@@ -4,22 +4,13 @@
 {% block content %}
 
 <style>
-  .checkout-cart-item{
-    display:flex;align-items:center;justify-content:space-between;
-    gap:.75rem;padding:.5rem 0;border-bottom:1px solid #e9ecef;
-  }
+  .checkout-cart-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.5rem 0;border-bottom:1px solid #e9ecef}
   .checkout-cart-item:last-child{border-bottom:none}
   .checkout-cart-item .left{display:flex;align-items:center;gap:.6rem;min-width:0}
-  .checkout-cart-item .thumb{
-    width:60px;height:60px;flex:0 0 60px;border-radius:8px;object-fit:cover;
-    border:1px solid #dee2e6;background:#fff
-  }
-  .checkout-cart-item .name{
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;font-weight:500
-  }
+  .checkout-cart-item .thumb{width:60px;height:60px;flex:0 0 60px;border-radius:8px;object-fit:cover;border:1px solid #dee2e6;background:#fff}
+  .checkout-cart-item .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;font-weight:500}
   .card-title{font-weight:600}
   .bank-hint{background:#f6fff8;border:1px solid #cfead6;border-radius:.5rem}
-  .bank-hint .form-label{margin-bottom:.25rem}
   .bank-hint .input-group>.form-control{background:#fff}
   .copy-btn{white-space:nowrap}
 </style>
@@ -29,7 +20,7 @@
     <h2 class="h4 mb-4"><i class="bi bi-bag-check me-2"></i>Đặt hàng</h2>
 
     <div class="row g-4">
-      <!-- LEFT: thông tin nhận hàng -->
+      <!-- LEFT -->
       <div class="col-lg-8">
         <div class="card border-success-subtle">
           <div class="card-body">
@@ -42,36 +33,20 @@
               </div>
               <div class="col-md-6">
                 <label class="form-label">Số điện thoại</label>
-                <input
-                  name="soDienThoai"
-                  id="inputPhone"
-                  type="tel"
-                  class="form-control"
-                  required
-                  inputmode="numeric"
-                  pattern="^[0-9]{9,12}$"
-                  maxlength="12"
-                  placeholder="Nhập số điện thoại">
+                <input name="soDienThoai" id="inputPhone" type="tel" class="form-control" required inputmode="numeric" pattern="^[0-9]{9,12}$" maxlength="12" placeholder="Nhập số điện thoại">
               </div>
-
               <div class="col-12">
                 <label class="form-label">Địa chỉ</label>
-                <input name="diaChi" type="text" class="form-control" required
-                       placeholder="Nhập địa chỉ">
+                <input name="diaChi" type="text" class="form-control" required placeholder="Nhập địa chỉ">
               </div>
-
               <div class="col-12">
                 <label class="form-label">Ghi chú</label>
-                <textarea name="ghiChu" class="form-control" rows="2"
-                          placeholder="Nhập ghi chú (nếu có)"></textarea>
+                <textarea name="ghiChu" class="form-control" rows="2" placeholder="Nhập ghi chú (nếu có)"></textarea>
               </div>
-
               <div class="col-md-6">
                 <label class="form-label">Ngày giao <span class="text-muted">(mong muốn)</span></label>
-                <input name="ngayGiao" id="ngayGiao" type="date" class="form-control" aria-describedby="ngayHelp">
-                
+                <input name="ngayGiao" id="ngayGiao" type="date" class="form-control">
               </div>
-
               <div class="col-md-6">
                 <label class="form-label">Phương thức thanh toán</label>
                 <select name="paymentMethod" id="paymentMethod" class="form-select">
@@ -80,14 +55,12 @@
                 </select>
               </div>
 
-              <!-- HƯỚNG DẪN CHUYỂN KHOẢN -->
+              <!-- HƯỚNG DẪN CK -->
               <div class="col-12 d-none" id="bankGuide">
                 <div class="p-3 bank-hint">
                   <div class="d-flex align-items-center mb-2">
-                    <i class="bi bi-bank me-2"></i>
-                    <strong>Hướng dẫn chuyển khoản</strong>
+                    <i class="bi bi-bank me-2"></i><strong>Hướng dẫn chuyển khoản</strong>
                   </div>
-
                   <div class="row g-3">
                     <div class="col-md-6">
                       <label class="form-label">Ngân hàng</label>
@@ -116,30 +89,26 @@
                         <input type="text" class="form-control" id="bankMemo" value="Thanh toan don hang - SDT: " readonly>
                         <button class="btn btn-outline-success copy-btn" type="button" data-copy="#bankMemo"><i class="bi bi-clipboard"></i> Copy</button>
                       </div>
-                     
                     </div>
                   </div>
                 </div>
               </div>
-              <!-- /HƯỚNG DẪN CHUYỂN KHOẢN -->
+              <!-- /HƯỚNG DẪN CK -->
             </form>
           </div>
         </div>
       </div>
 
-      <!-- RIGHT: Tổng tiền + danh sách sản phẩm -->
+      <!-- RIGHT -->
       <div class="col-lg-4">
         <div class="card border-success-subtle">
           <div class="card-body">
             <h5 class="card-title">Tổng tiền</h5>
-
             <div id="cartList" class="small mb-3 text-muted"></div>
-
             <div class="d-flex justify-content-between align-items-center mb-3">
               <span class="fw-semibold">Tổng tiền</span>
               <span id="sumTotal" class="fs-5 fw-semibold">0 đ</span>
             </div>
-
             <button id="btnPlaceOrder" class="btn btn-success w-100">
               <i class="bi bi-check2-circle me-1"></i> Xác nhận đặt hàng
             </button>
@@ -164,72 +133,44 @@
   const urlParams = new URLSearchParams(window.location.search);
   const buyNowId = urlParams.get('buy_now');
 
-  // ====== Giới hạn ngày giao: không quá khứ ======
-  function todayISO(){
-    const d = new Date();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const day = String(d.getDate()).padStart(2,'0');
+  // Ngày giao không quá khứ
+  const todayISO = () => {
+    const d = new Date(); const m = String(d.getMonth()+1).padStart(2,'0'); const day = String(d.getDate()).padStart(2,'0');
     return `${d.getFullYear()}-${m}-${day}`;
-  }
+  };
   const minDate = todayISO();
   inputDate.setAttribute('min', minDate);
 
-  // ====== SĐT: chỉ số 9–12 ======
+  // Phone chỉ số
   const digitsOnly = (s) => (s || '').replace(/\D+/g, '').slice(0, 12);
-  function sanitizePhone() {
-    const cur = inputPhone.value;
-    const clean = digitsOnly(cur);
-    if (cur !== clean) inputPhone.value = clean;
-  }
+  function sanitizePhone(){ const c = inputPhone.value; const clean = digitsOnly(c); if (c !== clean) inputPhone.value = clean; }
   inputPhone.addEventListener('input', sanitizePhone);
-  inputPhone.addEventListener('paste', (e) => {
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text');
-    document.execCommand('insertText', false, digitsOnly(text));
-  });
-  inputPhone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    const text = e.dataTransfer.getData('text');
-    inputPhone.value = digitsOnly(text);
-  });
-  inputPhone.addEventListener('keypress', (e) => {
-    const isDigit = /[0-9]/.test(e.key);
-    const isCtrl = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Enter"].includes(e.key);
-    if (!isDigit && !isCtrl) e.preventDefault();
-  });
 
-  // Toggle hướng dẫn chuyển khoản
-  function toggleBankGuide(){
-    bankGuide.classList.toggle('d-none', paymentSel.value !== 'chuyen_khoan');
-  }
-  paymentSel.addEventListener('change', toggleBankGuide);
-  toggleBankGuide();
+  function toggleBankGuide(){ bankGuide.classList.toggle('d-none', paymentSel.value !== 'chuyen_khoan'); }
+  paymentSel.addEventListener('change', toggleBankGuide); toggleBankGuide();
 
-  // Copy helper
   document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-copy]');
-    if(!btn) return;
-    const sel = btn.getAttribute('data-copy');
-    const input = document.querySelector(sel);
-    if(!input) return;
-    try{
-      await navigator.clipboard.writeText(input.value || '');
-      alert('✅ Đã sao chép!');
-    }catch(_){
-      alert('❌ Không sao chép được. Vui lòng copy thủ công.');
-    }
+    const btn = e.target.closest('[data-copy]'); if(!btn) return;
+    const sel = btn.getAttribute('data-copy'); const input = document.querySelector(sel); if(!input) return;
+    try{ await navigator.clipboard.writeText(input.value || ''); alert('✅ Đã sao chép!'); }catch(_){ alert('❌ Không sao chép được.'); }
   });
 
-  // Gợi ý SĐT vào nội dung CK
   inputPhone.addEventListener('input', () => {
     const phone = (inputPhone.value || '').replace(/\s+/g,'');
     bankMemo.value = 'Thanh toan don hang - SDT: ' + phone;
   });
 
-  // Load giỏ hàng hoặc sản phẩm mua ngay
+  // Build URL ảnh an toàn
+  const imgUrl = (p) => {
+    if (!p) return '/static/img/no-image.png';
+    if (p.startsWith('/') || p.startsWith('http')) return p;
+    return '/media/' + p.replace(/^\/+/, '');
+  };
+
+  // Load giỏ hàng / mua ngay và CHUẨN HÓA field hiển thị
   async function loadCart() {
     try {
-      let items = [];
+      let viewItems = [];
       let total = 0;
 
       if (buyNowId) {
@@ -237,43 +178,39 @@
         const sp = await res.json();
         if (!res.ok || !sp.tenSanPham) throw new Error('product_not_found');
 
-        const img = sp.hinhAnh && sp.hinhAnh[0]
-          ? `/media/${sp.hinhAnh[0]}`
-          : '/static/img/no-image.png';
-
-        items.push({ tenSanPham: sp.tenSanPham, soLuong: 1, thanhTien: sp.gia, hinhAnh: img });
-        total = sp.gia;
+        const img = sp.hinhAnh && sp.hinhAnh[0] ? `/media/${sp.hinhAnh[0]}` : '/static/img/no-image.png';
+        // chuẩn hoá
+        viewItems.push({ ten: sp.tenSanPham, img, sl: 1, tt: Number(sp.gia||0) });
+        total = Number(sp.gia||0);
       } else {
         const res = await fetch('/api/cart/list/', { credentials: 'same-origin' });
         if (!res.ok) throw new Error('cart_error');
         const data = await res.json();
-        items = data.items || [];
-        total = data.total || 0;
+        // chuẩn hoá từ {name,image,qty,subtotal}
+        viewItems = (data.items || []).map(it => ({
+          ten: it.name,
+          img: imgUrl(it.image),
+          sl : Number(it.qty || 0),
+          tt : Number(it.subtotal || 0),
+        }));
+        total = Number(data.total || 0);
       }
 
-      if (!items.length) {
+      if (!viewItems.length) {
         cartList.innerHTML = '<div class="text-danger">Không có sản phẩm nào!</div>';
         sumTotal.textContent = '0 đ';
         return;
       }
 
-      let html = '';
-      for (const it of items) {
-        const ten = it.tenSanPham || '(Không rõ sản phẩm)';
-        const img = it.hinhAnh || '/static/img/no-image.png';
-        const sl  = it.soLuong || 1;
-        const tt  = Number(it.thanhTien || 0);
-
-        html += `
-          <div class="checkout-cart-item">
-            <div class="left">
-              <img src="${img}" class="thumb" alt="${ten}">
-              <div class="name" title="${ten}">${ten} × ${sl}</div>
-            </div>
-            <div class="fw-semibold">${tt.toLocaleString('vi-VN')} đ</div>
-          </div>`;
-      }
-      cartList.innerHTML = html;
+      cartList.innerHTML = viewItems.map(it => `
+        <div class="checkout-cart-item">
+          <div class="left">
+            <img src="${it.img}" class="thumb" alt="${it.ten}">
+            <div class="name" title="${it.ten}">${it.ten} × ${it.sl}</div>
+          </div>
+          <div class="fw-semibold">${it.tt.toLocaleString('vi-VN')} đ</div>
+        </div>
+      `).join('');
 
       sumTotal.textContent = total.toLocaleString('vi-VN') + ' đ';
     } catch (err) {
@@ -287,19 +224,10 @@
   document.getElementById('btnPlaceOrder').addEventListener('click', async () => {
     const f = document.getElementById('checkoutForm');
 
-    // Validate phone
     sanitizePhone();
     const phone = inputPhone.value;
-    if (!/^[0-9]{9,12}$/.test(phone)) {
-      alert('Số điện thoại chỉ chứa số và phải có 9–12 ký tự.');
-      inputPhone.focus(); return;
-    }
-
-    // Validate date (nếu có chọn)
-    if (inputDate.value && inputDate.value < minDate) {
-      alert('Ngày giao mong muốn không được ở quá khứ.');
-      inputDate.focus(); return;
-    }
+    if (!/^[0-9]{9,12}$/.test(phone)) { alert('Số điện thoại chỉ chứa số và phải có 9–12 ký tự.'); inputPhone.focus(); return; }
+    if (inputDate.value && inputDate.value < minDate) { alert('Ngày giao mong muốn không được ở quá khứ.'); inputDate.focus(); return; }
 
     const data = {
       shipping: {
@@ -311,16 +239,8 @@
       },
       paymentMethod: f.paymentMethod.value
     };
-
-    if (!data.shipping.hoTen || !data.shipping.diaChi) {
-      alert('Vui lòng nhập đầy đủ Họ tên và Địa chỉ.');
-      return;
-    }
-
-    if (buyNowId) {
-      data.buyNowProductId = buyNowId;
-      data.buyNowQuantity  = 1;
-    }
+    if (!data.shipping.hoTen || !data.shipping.diaChi) { alert('Vui lòng nhập đầy đủ Họ tên và Địa chỉ.'); return; }
+    if (buyNowId) { data.buyNowProductId = buyNowId; data.buyNowQuantity = 1; }
 
     try {
       const res = await fetch('/api/orders/checkout', {
@@ -329,12 +249,10 @@
         credentials: 'same-origin',
         body: JSON.stringify(data)
       });
-
       const js = await res.json().catch(()=> ({}));
       if (res.ok && (js.created || js.id)) {
         alert('🎉 Đặt hàng thành công!');
-        const orderId = js.created || js.id;
-        setTimeout(() => location.href = '/don-hang/' + orderId + '/', 1200);
+        location.href = '/don-hang/' + (js.created || js.id) + '/';
       } else {
         alert('❌ Lỗi: ' + (js.error || res.status));
       }
