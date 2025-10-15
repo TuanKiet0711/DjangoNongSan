@@ -350,6 +350,10 @@ def admin_products_list(request):
 
     paginator = Paginator(products, 6)
     page_obj = paginator.get_page(page)
+    
+    # 👇 Thêm đoạn này để đảm bảo messages được lấy ra
+    storage = messages.get_messages(request)
+    context_messages = list(storage)  # buộc load messages
 
     return render(request, "shop/admin/products/products_list.html", {
         "items": page_obj.object_list,
@@ -407,10 +411,65 @@ def product_edit(request, id):
         messages.error(request, "Không tìm thấy sản phẩm")
         return redirect("shop:admin_products")
 
+    # ---------- Nếu submit form (POST) ----------
+    if request.method == "POST":
+        ten = (request.POST.get("ten_san_pham") or request.POST.get("tenSanPham") or "").strip()
+        mo_ta = (request.POST.get("mo_ta") or request.POST.get("moTa") or "").strip()
+        danh_muc_id = request.POST.get("danh_muc_id") or request.POST.get("danhMucId")
+        try:
+            gia = int(request.POST.get("gia") or 0)
+        except:
+            messages.error(request, "Giá phải là số!")
+            return redirect("shop:admin_product_edit", id=id)
+
+        # Tồn kho
+        try:
+            so_luong_ton = int(request.POST.get("so_luong_ton") or request.POST.get("soLuongTon") or 0)
+        except:
+            so_luong_ton = 0
+
+        # Ảnh (tùy chọn)
+        hinh_anh_urls = sp.get("hinhAnh", [])
+        if "hinh_anh" in request.FILES or "hinhAnh" in request.FILES:
+            file = request.FILES.get("hinh_anh") or request.FILES.get("hinhAnh")
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, "sanpham"))
+            filename = fs.save(file.name, file)
+            hinh_anh_urls = ["sanpham/" + filename]
+
+        update_data = {
+            "tenSanPham": ten,
+            "moTa": mo_ta,
+            "gia": gia,
+            "soLuongTon": so_luong_ton,
+            "hinhAnh": hinh_anh_urls,
+        }
+
+        if danh_muc_id:
+            oid_dm = _as_oid(danh_muc_id)
+            if not oid_dm:
+                messages.error(request, "Mã danh mục không hợp lệ")
+                return redirect("shop:admin_product_edit", id=id)
+            update_data["danhMucId"] = oid_dm
+
+        san_pham.update_one({"_id": oid}, {"$set": update_data})
+        messages.success(request, "Cập nhật sản phẩm thành công!")
+        return redirect("shop:admin_products")
+
+    # ---------- Nếu là GET (hiển thị form sửa) ----------
     return render(request, "shop/admin/products/products_edit.html", {
         "product_id": id,
-        "categories": _categories_for_select()
+        "categories": _categories_for_select(),
+        "product": {
+            "id": str(sp["_id"]),
+            "tenSanPham": sp.get("tenSanPham", ""),
+            "moTa": sp.get("moTa", ""),
+            "gia": sp.get("gia", 0),
+            "soLuongTon": int(sp.get("soLuongTon", 0)),
+            "danhMucId": str(sp.get("danhMucId")) if sp.get("danhMucId") else "",
+            "hinhAnh": (sp.get("hinhAnh") or [None])[0] if sp.get("hinhAnh") else None,
+        }
     })
+
 
 def product_delete(request, id):
     oid = _as_oid(id)
