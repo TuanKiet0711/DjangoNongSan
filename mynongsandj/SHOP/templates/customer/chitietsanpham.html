@@ -1,23 +1,64 @@
 {% extends "customer/base.html" %}
+{% load static %}
 {% load humanize %}
 {% block title %}{% if product %}{{ product.ten }}{% else %}Chi tiết sản phẩm{% endif %}{% endblock %}
 
 {% block content %}
 <style>
-  .gallery-main{border:1px solid #eee; border-radius:12px; overflow:hidden;}
-  .gallery-main img{width:100%; height:360px; object-fit:cover;}
-  .thumbs{gap:8px;}
-  .thumbs img{width:80px; height:60px; object-fit:cover; border:2px solid transparent; border-radius:8px; cursor:pointer;}
-  .thumbs img.active{border-color:#2e7d32;}
-  .price-lg{font-size:1.6rem; font-weight:800; color:#1e5f22;}
-  .btn-buy{background:linear-gradient(180deg,#2e7d32 0,#1e5f22 100%); color:#fff; border:none;}
-  .btn-back{border:1px solid #cfd8dc;color:#546e7a;border-radius:999px}
+  :root{
+    --green:#2e7d32; --green-700:#1b5e20; --green-50:#e9f6ec;
+    --blue:#3b78ff; --orange:#ff8f00; --muted:#6c757d;
+    --border:#e5e7eb; --shadow:0 14px 32px rgba(0,0,0,.08);
+  }
+
+  .pd-wrap{padding-top:1.25rem;padding-bottom:2rem}
+
+  /* Card shells */
+  .card-soft{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+  .card-soft .card-body{padding:18px}
+
+  /* Gallery */
+  .gallery-main{position:relative;overflow:hidden;border-radius:16px}
+  .gallery-main img{width:100%;height:420px;object-fit:cover;transition:transform .2s ease}
+  .gallery-main:hover img{transform:scale(1.02)}
+  .thumbs{display:flex;gap:10px;flex-wrap:wrap;padding:12px;border-top:1px solid var(--border);background:#fafafa;border-radius:12px;margin-top:10px}
+  .thumbs img{width:82px;height:64px;object-fit:cover;border:2px solid transparent;border-radius:10px;cursor:pointer;transition:transform .12s ease, border-color .12s ease}
+  .thumbs img:hover{transform:translateY(-2px)}
+  .thumbs img.active{border-color:var(--green)}
+
+  /* Info */
+  .pd-title{font-weight:800;margin-bottom:6px}
+  .pd-desc{color:var(--muted)}
+  .price-lg{font-size:1.9rem;font-weight:900;color:#174b1b}
+
+  /* === NÚT THEO TRANG LIST === */
+  .btn-pill{border-radius:999px}
+  .btn-add-cart{
+    background:linear-gradient(180deg,#f4fbf5,#ecf7ee);
+    border:2px dashed var(--green);
+    color:var(--green); font-weight:800; height:46px;
+    box-shadow:0 8px 18px rgba(46,125,50,.12);
+  }
+  .btn-add-cart:hover{background:#daf0dd;color:var(--green-700);transform:translateY(-1px)}
+  .btn-buy-now{
+    background:#fff; border:2px solid var(--orange);
+    color:var(--orange); font-weight:800; height:46px;
+    box-shadow:0 8px 18px rgba(255,143,0,.18);
+  }
+  .btn-buy-now:hover{background:var(--orange);color:#fff;transform:translateY(-1px)}
+
+  .btn-back{border:1px solid #cfd8dc;color:#546e7a;border-radius:999px;height:42px}
   .btn-back:hover{background:#eceff1;color:#37474f}
-  .specs dt{width:120px; color:#6c757d;}
-  .specs dd{margin-bottom:.5rem;}
+
+  /* Related */
+  .rel-card{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#fff;transition:transform .15s, box-shadow .15s}
+  .rel-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(0,0,0,.08)}
+  .rel-img{height:120px;object-fit:cover}
+  .rel-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rel-price{font-weight:700}
 </style>
 
-<div class="container py-4">
+<div class="container pd-wrap">
   {% if error %}
     <div class="alert alert-warning">{{ error }}</div>
   {% elif not product %}
@@ -26,45 +67,64 @@
 
   <div class="row g-4">
     <!-- Gallery -->
-    <div class="col-12 col-md-6">
-      <div class="gallery-main mb-2">
-        <img id="mainImg" src="{{ MEDIA_URL }}{{ product.hinh_anh.0|default_if_none:'' }}" alt="{{ product.ten }}">
-      </div>
-      <div class="d-flex thumbs flex-wrap">
-        {% for img in product.hinh_anh %}
-          <img src="{{ MEDIA_URL }}{{ img }}" alt="thumb {{ forloop.counter }}"
-               class="{% if forloop.first %}active{% endif %}" data-src="{{ MEDIA_URL }}{{ img }}">
-        {% empty %}
-          <div class="text-muted small">Chưa có hình ảnh</div>
-        {% endfor %}
+    <div class="col-12 col-lg-6">
+      <div class="card-soft">
+        <div class="card-body">
+          <div class="gallery-main">
+            <img id="mainImg" src="{{ MEDIA_URL }}{{ product.hinh_anh.0|default_if_none:'' }}" alt="{{ product.ten }}">
+          </div>
+          <div class="thumbs">
+            {% for img in product.hinh_anh %}
+              <img src="{{ MEDIA_URL }}{{ img }}" alt="thumb {{ forloop.counter }}"
+                   class="{% if forloop.first %}active{% endif %}" data-src="{{ MEDIA_URL }}{{ img }}">
+            {% empty %}
+              <div class="text-muted small">Chưa có hình ảnh</div>
+            {% endfor %}
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Info -->
-    <div class="col-12 col-md-6">
-      <h3 class="mb-2">{{ product.ten }}</h3>
-      <div class="mb-2">
-        <span class="badge text-bg-success-subtle text-success-emphasis">{{ product.danh_muc_ten }}</span>
-      </div>
-      <div>
-        <h6 class="fw-semibold">Mô tả</h6>
-        <p class="mb-0">{{ product.mo_ta|linebreaksbr|default:"(Chưa có mô tả)" }}</p>
-      </div>
-      <div class="price-lg mb-3">{{ product.gia|intcomma }} VNĐ</div>
+    <div class="col-12 col-lg-6">
+      <div class="card-soft">
+        <div class="card-body">
+          <h1 class="h4 pd-title">{{ product.ten }}</h1>
+          <div class="mb-2">
+            <span class="badge text-bg-success-subtle text-success-emphasis">{{ product.danh_muc_ten }}</span>
+          </div>
 
-      <div class="d-flex flex-column gap-2 mb-4">
-        <a class="btn btn-buy w-100" href="{% url 'shop:customer_checkout' %}?buy_now={{ product.id }}">
-          <i class="bi bi-bag-check me-1"></i> Mua ngay
-        </a>
-        <button class="btn btn-outline-success w-100" id="btnAddDetail" data-id="{{ product.id }}">
-          <i class="bi bi-cart-plus me-1"></i> Thêm vào giỏ
-        </button>
-        <!-- Nút quay lại danh sách sản phẩm -->
-        <a href="{% url 'shop:sanpham_list' %}" class="btn btn-back w-100">
-          <i class="bi bi-arrow-left"></i> Quay lại danh sách sản phẩm
-        </a>
+          <div class="mb-3">
+            <h6 class="fw-semibold mb-1">Mô tả</h6>
+            <div class="pd-desc">{{ product.mo_ta|linebreaksbr|default:"(Chưa có mô tả)" }}</div>
+          </div>
+
+          <div class="price-lg mb-3">{{ product.gia|intcomma }} VNĐ</div>
+
+          <!-- === Nút giống trang LIST (GIỮ URL/ENDPOINT CŨ) === -->
+          <div class="d-grid gap-2 mb-3">
+            <a href="{% url 'shop:customer_checkout' %}?buy_now={{ product.id }}"
+               class="btn btn-buy-now btn-pill w-100">
+              <i class="bi bi-lightning-charge-fill me-1"></i> Mua ngay
+            </a>
+
+            <button type="button"
+                    class="btn btn-add-cart btn-pill w-100"
+                    id="btnAddDetail"
+                    data-id="{{ product.id }}">
+              <i class="bi bi-bag-plus me-1"></i> Thêm vào giỏ
+            </button>
+
+            <a href="{% url 'shop:sanpham_list' %}" class="btn btn-back w-100">
+              <i class="bi bi-arrow-left"></i> Quay lại danh sách
+            </a>
+          </div>
+
+          <div class="text-muted small">
+            <i class="bi bi-shield-check me-1"></i>Thanh toán an toàn & hoàn tiền trong 7 ngày
+          </div>
+        </div>
       </div>
-      <hr>
     </div>
   </div>
 
@@ -74,15 +134,17 @@
   <div class="row g-3">
     {% for r in related %}
     <div class="col-6 col-md-3 col-lg-2">
-      <div class="card h-100">
+      <div class="rel-card h-100">
         <a href="{% url 'shop:product_detail' r.id %}">
-          <img src="{{ MEDIA_URL }}{{ r.hinh_anh.0|default_if_none:'' }}" class="card-img-top" style="height:120px;object-fit:cover;">
+          <img src="{{ MEDIA_URL }}{{ r.hinh_anh.0|default_if_none:'' }}" class="rel-img w-100" alt="{{ r.ten }}">
         </a>
-        <div class="card-body p-2">
-          <div class="small text-truncate" title="{{ r.ten }}">{{ r.ten }}</div>
-          <div class="fw-semibold small">{{ r.gia|intcomma }} đ</div>
+        <div class="p-2">
+          <div class="rel-title small" title="{{ r.ten }}">{{ r.ten }}</div>
+          <div class="rel-price small">{{ r.gia|intcomma }} đ</div>
           <div class="d-grid mt-2">
-            <a class="btn btn-sm btn-outline-success" href="{% url 'shop:product_detail' r.id %}">Xem</a>
+            <a class="btn btn-sm btn-outline-success" href="{% url 'shop:product_detail' r.id %}">
+              <i class="bi bi-eye me-1"></i>Xem
+            </a>
           </div>
         </div>
       </div>
@@ -94,8 +156,8 @@
   {% endif %}
 </div>
 
-<!-- Toasts -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+<!-- Toasts top-right -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index:1100">
   <div id="cartToastSuccess" class="toast text-bg-success border-0">
     <div class="d-flex">
       <div class="toast-body">✅ Thêm vào giỏ hàng thành công!</div>
@@ -103,7 +165,7 @@
     </div>
   </div>
 </div>
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+<div class="position-fixed top-0 end-0 p-3" style="z-index:1100">
   <div id="cartToastError" class="toast text-bg-danger border-0">
     <div class="d-flex">
       <div class="toast-body">❌ Lỗi khi thêm vào giỏ!</div>
@@ -114,7 +176,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // gallery
+  // Gallery
   const main = document.getElementById('mainImg');
   document.querySelectorAll('.thumbs img').forEach(t => {
     t.addEventListener('click', () => {
@@ -124,23 +186,61 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // add to cart
+  // Toasts
   const toastSuccess = new bootstrap.Toast(document.getElementById('cartToastSuccess'), { delay: 2000 });
-  const toastError = new bootstrap.Toast(document.getElementById('cartToastError'), { delay: 2000 });
-  const btn = document.getElementById('btnAddDetail');
-  if(btn){
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
+  const toastError   = new bootstrap.Toast(document.getElementById('cartToastError'),   { delay: 2000 });
+
+  // CSRF
+  function getCookie(name){
+    let v=null;
+    if(document.cookie && document.cookie!==''){
+      const cookies=document.cookie.split(';');
+      for(let c of cookies){ c=c.trim(); if(c.substring(0,name.length+1)===(name+'=')){ v=decodeURIComponent(c.substring(name.length+1)); break; } }
+    }
+    return v;
+  }
+  const CSRF=getCookie('csrftoken');
+
+  // Add-to-cart (ưu tiên API bạn đang dùng, fallback /api/cart/add/<id>/)
+  async function addToCart(productId){
+    try{
+      const url = "{% url 'shop:api_add_to_cart' sp_id='SPID' %}".replace('SPID', productId);
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{ 'X-CSRFToken': CSRF, 'Accept':'application/json' },
+        credentials:'same-origin'
+      });
+      if(res.status===401){ window.location.href="{% url 'shop:auth_login_page' %}"; return null; }
+      if(res.ok){ try{ return await res.json(); }catch{ return {success:true}; } }
+      throw new Error('primary_failed');
+    }catch(_){ /* fallback */ }
+
+    const res2 = await fetch(`/api/cart/add/${productId}/`, {
+      method:'POST',
+      headers:{ 'X-CSRFToken': CSRF, 'Accept':'application/json' },
+      credentials:'same-origin',
+      body:new URLSearchParams({ so_luong:'1' })
+    });
+    if(res2.status===401){ window.location.href="{% url 'shop:auth_login_page' %}"; return null; }
+    if(!res2.ok) throw new Error('fallback_failed');
+    try{ return await res2.json(); }catch{ return {success:true}; }
+  }
+
+  // Click "Thêm vào giỏ" (giữ selector giống list: .btn-add-cart)
+  const detailBtn = document.getElementById('btnAddDetail');
+  if(detailBtn){
+    detailBtn.addEventListener('click', async () => {
+      const id = detailBtn.dataset.id;
+      if(!id) return;
       try{
-        const res = await fetch("{% url 'shop:api_add_to_cart' sp_id='SPID' %}".replace('SPID', id), { method:'POST' });
-        const data = await res.json().catch(()=>({}));
-        if(res.ok && data.success){ toastSuccess.show(); if(window.updateCartBadge) window.updateCartBadge(data.count, data.total); }
-        else if(res.status === 401){ window.location.href = "{% url 'shop:auth_login_page' %}"; }
-        else{ toastError.show(); }
-      }catch(e){ toastError.show(); }
+        const data = await addToCart(id);
+        if(data){
+          toastSuccess.show();
+          if(window.updateCartBadge) window.updateCartBadge(data.count ?? data.cart_count, data.total ?? undefined);
+        }
+      }catch{ toastError.show(); }
     });
   }
 });
-
 </script>
 {% endblock %}

@@ -1,18 +1,38 @@
 {% extends "shop/admin/base_admin.html" %}
-{% block title %}Xoá danh mục{% endblock %}
+{% block title %}Xóa danh mục{% endblock %}
+{% block page_title %}Xóa danh mục{% endblock %}
 
 {% block content %}
-<div class="container py-3" style="max-width:640px">
-  <h4 class="mb-3 text-danger">Xoá danh mục</h4>
-  <div class="alert alert-warning">
-    Bạn có chắc muốn xoá danh mục: <strong>{{ tenDanhMuc }}</strong>?
-  </div>
-  <form method="post" action="{% url 'shop:admin_category_delete' id %}">
-    {% csrf_token %}
-    <div class="d-flex gap-2">
-      <a class="btn btn-secondary" href="{% url 'shop:admin_categories' %}">Huỷ</a>
-      <button class="btn btn-danger" type="submit">Xoá</button>
+<div class="container py-4" style="max-width:700px">
+  <div class="card shadow-sm border-0 rounded-4">
+    <div class="card-body p-4">
+      <h4 class="fw-bold mb-3 text-danger">
+        <i class="bi bi-trash3-fill me-2"></i>Xóa danh mục
+      </h4>
+      <hr class="mb-4">
+
+      <div class="alert alert-warning border-0 rounded-3 shadow-sm mb-4">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Bạn có chắc muốn xóa danh mục
+        <strong class="text-danger">“{{ tenDanhMuc }}”</strong> không?<br>
+        <small class="text-muted">Hành động này không thể hoàn tác.</small>
+      </div>
+
+      <form method="post" action="{% url 'shop:admin_category_delete' id %}">
+        {% csrf_token %}
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{% url 'shop:admin_categories' %}"
+             class="btn btn-light border rounded-pill px-4">
+             <i class="bi bi-arrow-left"></i> Hủy bỏ
+          </a>
+          <button type="submit"
+                  class="btn text-white rounded-pill px-4"
+                  style="background:linear-gradient(90deg,#dc2626,#b91c1c);box-shadow:0 4px 12px rgba(220,38,38,.25);">
+            <i class="bi bi-trash me-1"></i> Xác nhận xóa
+          </button>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 </div>
 {% endblock %}

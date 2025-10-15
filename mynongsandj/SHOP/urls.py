@@ -89,7 +89,7 @@ urlpatterns = [
     path("auth/login/",    ap.login_page,    name="auth_login_page"),
     path("auth/register/", ap.register_page, name="auth_register_page"),
     path("auth/logout/",   ap.logout_view,   name="auth_logout_page"),
-
+ 
     path("api/auth/register", tv.auth_register),
     path("api/auth/login",    tv.auth_login),
     path("api/auth/logout",   tv.auth_logout),

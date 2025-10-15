@@ -110,7 +110,40 @@ def dashboard(request):
         "monthly_values": monthly_values,
     }
     return render(request, "shop/admin/dashboard.html", ctx)
+@admin_required
+def revenue_range(request):
+    """API JSON: trả về doanh thu theo ngày hoặc tháng trong khoảng chọn"""
+    try:
+        start = datetime.fromisoformat(request.GET.get("start"))
+        end = datetime.fromisoformat(request.GET.get("end"))
+    except Exception:
+        return JsonResponse({"error": "Tham số ngày không hợp lệ."}, status=400)
 
+    mode = request.GET.get("mode", "day")
+    ok_status = ["da_xac_nhan", "dang_giao", "hoan_thanh"]
+    tz_name = "Asia/Ho_Chi_Minh"
+
+    if mode == "month":
+        fmt = "%Y-%m"
+    else:
+        fmt = "%Y-%m-%d"
+
+    pipe = [
+        {"$match": {
+            "trangThai": {"$in": ok_status},
+            "ngayTao": {"$gte": start, "$lte": end}
+        }},
+        {"$group": {
+            "_id": {"$dateToString": {"format": fmt, "date": "$ngayTao", "timezone": tz_name}},
+            "revenue": {"$sum": "$tongTien"}
+        }},
+        {"$sort": {"_id": 1}}
+    ]
+    data = list(don_hang.aggregate(pipe))
+    labels = [d["_id"] for d in data]
+    values = [int(d["revenue"]) for d in data]
+
+    return JsonResponse({"labels": labels, "values": values})
 # =================== CATEGORIES (ADMIN) =================== #
 def _safe_oid(s):
     try:
@@ -134,7 +167,8 @@ def categories_list(request):
     page = min(page, total_pages)
     skip = (page - 1) * PAGE_SIZE
 
-    cursor = (col.find(query).sort(storage_field, 1).skip(skip).limit(PAGE_SIZE))
+    cursor = (col.find(query).sort("_id", -1).skip(skip).limit(PAGE_SIZE))
+
     items = [{"id": str(dm["_id"]), "tenDanhMuc": dm.get(storage_field, "")} for dm in cursor]
 
     ctx = {

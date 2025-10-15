@@ -247,11 +247,7 @@
   window.showToast=showToast;
 
   // Show Django messages bằng toast
-  {% if messages %}
-    {% for m in messages %}
-      showToast("{{ m|escapejs }}", "{% if 'error' in m.tags %}error{% else %}success{% endif %}");
-    {% endfor %}
-  {% endif %}
+ 
 })();
 </script>
 {% endblock %}

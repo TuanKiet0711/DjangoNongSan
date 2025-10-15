@@ -178,12 +178,6 @@
     setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=> el.remove(), 300); }, timeout);
   }
   window.showToast = showToast;
-
-  {% if messages %}
-    {% for m in messages %}
-      showToast("{{ m|escapejs }}", "{% if 'error' in m.tags %}error{% else %}success{% endif %}");
-    {% endfor %}
-  {% endif %}
 })();
 </script>
 {% endblock %}
