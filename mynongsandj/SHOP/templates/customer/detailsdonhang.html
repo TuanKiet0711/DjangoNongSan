@@ -12,33 +12,25 @@
 </div>
 
 <style>
-  /* ===== Card & layout ===== */
   .order-card{border:1px solid #e9ecef;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.05)}
   .section-title{font-weight:800;font-size:1.05rem;margin-bottom:.75rem;color:#14532d}
   .kv{display:grid;grid-template-columns:180px 1fr;gap:.35rem .75rem}
   .kv .k{color:#6b7280}
   .kv .v{font-weight:600}
   .divider{height:1px;background:#eef2f3;margin:1rem 0}
-
-  /* ===== Status badge (VN) ===== */
   .status-badge{border-radius:999px;padding:.35rem .6rem;font-weight:700;border:1px solid transparent}
   .st-cho_xu_ly   { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
   .st-da_xac_nhan { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
   .st-dang_giao   { background:#f0f9ff; color:#0369a1; border-color:#bae6fd; }
   .st-hoan_thanh  { background:#ecfdf5; color:#065f46; border-color:#bbf7d0; }
   .st-da_huy      { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
-
-  /* ===== Product table ===== */
   .product-img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb}
   .table thead th{background:#f8fafc}
   .table td, .table th{vertical-align:middle}
-
-  /* ===== “Form-like” blocks ===== */
   .form-like{background:#f9fffb;border:1px dashed #b7e4c7;border-radius:12px;padding:12px}
 </style>
 
 <script>
-  // ==== Helpers ====
   function formatDateVN(dateStr){
     if(!dateStr) return '';
     const d = new Date(dateStr);
@@ -48,55 +40,41 @@
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
   }
-
   function formatPaymentVN(method){
     if(!method) return '';
     const m = (method+'').toLowerCase();
     if (m.includes('cod')) return 'Thanh toán khi nhận hàng';
     if (m.includes('chuyen') || m.includes('bank')) return 'Chuyển khoản';
+    if (m.includes('vnpay')) return 'VNPAY';
     return method;
   }
-
   function formatStatusVN(status){
     const s = (status || '').toLowerCase();
-    const map = {
-      'cho_xu_ly': 'Chờ xử lý',
-      'da_xac_nhan': 'Đã xác nhận',
-      'dang_giao': 'Đang giao',
-      'hoan_thanh': 'Hoàn thành',
-      'da_huy': 'Đã hủy'
-    };
+    const map = {'cho_xu_ly':'Chờ xử lý','da_xac_nhan':'Đã xác nhận','dang_giao':'Đang giao','hoan_thanh':'Hoàn thành','da_huy':'Đã hủy'};
     return map[s] || status;
   }
-
   async function getProduct(id){
-    try{
-      const res = await fetch(`/api/products/${id}/`, {credentials:'same-origin'});
-      if(!res.ok) return null;
-      return await res.json();
+    try{ const r = await fetch(`/api/products/${id}/`, {credentials:'same-origin'});
+      if(!r.ok) return null; return await r.json();
     }catch{ return null; }
   }
-
-  // ==== Main ====
   async function loadOrder(){
+    // nếu có ?paid=1 => show toast
+    const qp = new URLSearchParams(location.search);
+    if(qp.get('paid')==='1'){ setTimeout(()=>alert('🎉 Thanh toán thành công! Đơn đã được xác nhận.'), 100); }
+
     const res = await fetch(`/api/orders/{{ order_id }}/`, {credentials:'same-origin'});
     if(res.status===401) return location.href = "{% url 'shop:auth_login_page' %}";
     const o = await res.json();
     const wrap = document.getElementById('order-detail');
+    if(o.error){ wrap.innerHTML = `<div class="alert alert-danger">${o.error}</div>`; return; }
 
-    if(o.error){
-      wrap.innerHTML = `<div class="alert alert-danger">${o.error}</div>`;
-      return;
-    }
-
-    // Build product rows
     let rows = '';
     for(const it of (o.items || [])){
       const p = await getProduct(it.sanPhamId);
       const rawImg = p && (p.hinhAnh?.[0] || p.anh);
       const img = rawImg ? `/media/${rawImg}` : '/static/img/no-image.png';
       const name = p && p.tenSanPham ? p.tenSanPham : '(Không rõ tên)';
-
       rows += `
         <tr>
           <td>
@@ -115,10 +93,8 @@
     const statusVN = formatStatusVN(o.trangThai);
     const payVN = formatPaymentVN(o.phuongThucThanhToan);
 
-    // ==== Render card ====
     wrap.innerHTML = `
       <div class="order-card p-4">
-        <!-- Header -->
         <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
           <div class="d-flex align-items-center gap-2">
             <h4 class="m-0 text-success fw-bold">Chi tiết đơn hàng</h4>
@@ -126,8 +102,6 @@
           </div>
           <div class="text-muted">Tổng tiền: <span class="fw-bold">${Number(o.tongTien||0).toLocaleString('vi-VN')} đ</span></div>
         </div>
-
-        <!-- Tổng quan (form-like) -->
         <div class="row g-3">
           <div class="col-12 col-lg-6">
             <div class="form-like">
@@ -140,7 +114,6 @@
               </div>
             </div>
           </div>
-
           <div class="col-12 col-lg-6">
             <div class="form-like">
               <div class="section-title"><i class="bi bi-geo-alt me-1"></i> Thông tin giao hàng</div>
@@ -154,31 +127,21 @@
             </div>
           </div>
         </div>
-
         <div class="divider"></div>
-
-        <!-- Sản phẩm -->
         <div class="section-title"><i class="bi bi-bag-check me-1"></i> Sản phẩm</div>
         <div class="table-responsive">
           <table class="table align-middle">
-            <thead>
-              <tr>
-                <th style="min-width:240px">Tên sản phẩm</th>
-                <th class="text-center" style="width:100px">SL</th>
-                <th class="text-end" style="width:160px">Đơn giá</th>
-                <th class="text-end" style="width:180px">Thành tiền</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows || `<tr><td colspan="4" class="text-center text-muted py-4">Không có sản phẩm</td></tr>`}
-            </tbody>
+            <thead><tr>
+              <th style="min-width:240px">Tên sản phẩm</th>
+              <th class="text-center" style="width:100px">SL</th>
+              <th class="text-end" style="width:160px">Đơn giá</th>
+              <th class="text-end" style="width:180px">Thành tiền</th>
+            </tr></thead>
+            <tbody>${rows || `<tr><td colspan="4" class="text-center text-muted py-4">Không có sản phẩm</td></tr>`}</tbody>
           </table>
         </div>
-      </div>
-    `;
+      </div>`;
   }
-
   loadOrder();
 </script>
-
 {% endblock %}

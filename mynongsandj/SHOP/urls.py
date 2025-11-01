@@ -1,6 +1,6 @@
 # shop/urls.py
 from django.urls import path
-
+from .views import payment_vnpay as pv
 # import module-level, KHÔNG import rồi lại định nghĩa trùng tên trong file này
 from .views import (
     home,                    # module views/home.py
@@ -94,4 +94,8 @@ urlpatterns = [
     path("api/auth/login",    tv.auth_login),
     path("api/auth/logout",   tv.auth_logout),
     path("api/auth/me",       tv.auth_me),
+
+    path("payment/vnpay/create/<str:id>/", pv.vnpay_create, name="vnpay_create"),
+    path("payment/vnpay/return/",          pv.vnpay_return, name="vnpay_return"),
+    path("payment/vnpay/ipn/",             pv.vnpay_ipn,    name="vnpay_ipn"),
 ]

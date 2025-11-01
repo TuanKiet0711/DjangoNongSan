@@ -2,7 +2,6 @@
 {% load static %}
 {% block title %}Đặt hàng{% endblock %}
 {% block content %}
-
 <style>
   .checkout-cart-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.5rem 0;border-bottom:1px solid #e9ecef}
   .checkout-cart-item:last-child{border-bottom:none}
@@ -51,7 +50,7 @@
                 <label class="form-label">Phương thức thanh toán</label>
                 <select name="paymentMethod" id="paymentMethod" class="form-select">
                   <option value="cod" selected>COD (Thanh toán khi nhận hàng)</option>
-                  <option value="chuyen_khoan">Chuyển khoản</option>
+                  <option value="vnpay">VNPAY </option>
                 </select>
               </div>
 
@@ -146,8 +145,10 @@
   function sanitizePhone(){ const c = inputPhone.value; const clean = digitsOnly(c); if (c !== clean) inputPhone.value = clean; }
   inputPhone.addEventListener('input', sanitizePhone);
 
-  function toggleBankGuide(){ bankGuide.classList.toggle('d-none', paymentSel.value !== 'chuyen_khoan'); }
-  paymentSel.addEventListener('change', toggleBankGuide); toggleBankGuide();
+  function toggleGuide(){
+    bankGuide.classList.toggle('d-none', paymentSel.value !== 'chuyen_khoan');
+  }
+  paymentSel.addEventListener('change', toggleGuide); toggleGuide();
 
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-copy]'); if(!btn) return;
@@ -157,7 +158,7 @@
 
   inputPhone.addEventListener('input', () => {
     const phone = (inputPhone.value || '').replace(/\s+/g,'');
-    bankMemo.value = 'Thanh toan don hang - SDT: ' + phone;
+    if (bankMemo) bankMemo.value = 'Thanh toan don hang - SDT: ' + phone;
   });
 
   // Build URL ảnh an toàn
@@ -167,7 +168,7 @@
     return '/media/' + p.replace(/^\/+/, '');
   };
 
-  // Load giỏ hàng / mua ngay và CHUẨN HÓA field hiển thị
+  // Load giỏ hàng / buy-now
   async function loadCart() {
     try {
       let viewItems = [];
@@ -177,16 +178,13 @@
         const res = await fetch(`/api/products/${buyNowId}/`);
         const sp = await res.json();
         if (!res.ok || !sp.tenSanPham) throw new Error('product_not_found');
-
         const img = sp.hinhAnh && sp.hinhAnh[0] ? `/media/${sp.hinhAnh[0]}` : '/static/img/no-image.png';
-        // chuẩn hoá
         viewItems.push({ ten: sp.tenSanPham, img, sl: 1, tt: Number(sp.gia||0) });
         total = Number(sp.gia||0);
       } else {
         const res = await fetch('/api/cart/list/', { credentials: 'same-origin' });
         if (!res.ok) throw new Error('cart_error');
         const data = await res.json();
-        // chuẩn hoá từ {name,image,qty,subtotal}
         viewItems = (data.items || []).map(it => ({
           ten: it.name,
           img: imgUrl(it.image),
@@ -251,8 +249,13 @@
       });
       const js = await res.json().catch(()=> ({}));
       if (res.ok && (js.created || js.id)) {
-        alert('🎉 Đặt hàng thành công!');
-        location.href = '/don-hang/' + (js.created || js.id) + '/';
+        const orderId = (js.created || js.id);
+        if (f.paymentMethod.value === 'vnpay') {
+          location.href = `/payment/vnpay/create/${orderId}/`;
+        } else {
+          alert('🎉 Đặt hàng thành công!');
+          location.href = '/don-hang/' + orderId + '/';
+        }
       } else {
         alert('❌ Lỗi: ' + (js.error || res.status));
       }
@@ -265,5 +268,4 @@
   loadCart();
 })();
 </script>
-
 {% endblock %}

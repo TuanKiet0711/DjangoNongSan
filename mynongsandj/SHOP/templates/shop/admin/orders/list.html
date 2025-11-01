@@ -134,9 +134,23 @@
                 <a class="btn btn-sm btn-warning" href="{% url 'shop:admin_order_edit' o.id %}" title="Sửa">
                   <i class="bi bi-pencil"></i>
                 </a>
-                <a class="btn btn-sm btn-outline-danger" href="{% url 'shop:admin_order_delete' o.id %}" title="Xóa">
-                  <i class="bi bi-trash"></i>
-                </a>
+                {% if o.trangThai == 'cho_xu_ly' or o.trangThai == 'da_huy' %}
+  <!-- Cho phép xóa thật -->
+  <a class="btn btn-sm btn-outline-danger"
+     href="{% url 'shop:admin_order_delete' o.id %}"
+     title="Xóa">
+    <i class="bi bi-trash"></i>
+  </a>
+{% else %}
+  <!-- Vẫn hiện nút, nhưng không cho xóa, chỉ thông báo -->
+  <button type="button"
+          class="btn btn-sm btn-outline-danger"
+          onclick="showToast('Chỉ được xóa đơn Chờ xử lý hoặc Đã hủy', 'error')"
+          title="Không thể xóa đơn hàng này">
+    <i class="bi bi-trash"></i>
+  </button>
+{% endif %}
+
               </div>
             </td>
           </tr>

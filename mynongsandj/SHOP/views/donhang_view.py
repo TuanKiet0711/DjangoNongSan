@@ -11,12 +11,14 @@ import json
 from ..database import donhang, sanpham, giohang
 
 # ================== Constants / helpers ==================
-PAYMENT_METHODS = {"cod", "chuyen_khoan"}
+PAYMENT_METHODS = {"cod", "chuyen_khoan", "vnpay"}
 _ALIAS_PM = {
     "ck": "chuyen_khoan", "chuyen-khoan": "chuyen_khoan", "bank": "chuyen_khoan",
     "bank_transfer": "chuyen_khoan", "transfer": "chuyen_khoan",
-    "vnpay": "chuyen_khoan", "momo": "chuyen_khoan", "vi_dien_tu": "chuyen_khoan",
+    "momo": "chuyen_khoan", "vi_dien_tu": "chuyen_khoan",
+    # không map 'vnpay' sang 'chuyen_khoan'
 }
+
 ORDER_STATUSES = {"cho_xu_ly", "da_xac_nhan", "dang_giao", "hoan_thanh", "da_huy"}
 
 
@@ -339,9 +341,17 @@ def order_detail(request, id):
 
         return JsonResponse({"error": "no_fields"}, status=400)
 
-    # ----- DELETE -----
+    # ----- DELETE (chỉ cho phép khi 'cho_xu_ly' hoặc 'da_huy') -----
     if request.method == "DELETE":
-        # Tùy bài toán: nếu xóa đơn ở trạng thái chưa giao & chưa cancel -> có thể cân nhắc hoàn kho ở đây.
+        cur = d.get("trangThai", "")
+        # Chỉ được xoá khi đơn đang chờ xử lý hoặc đã hủy
+        if cur not in ("cho_xu_ly", "da_huy"):
+            return JsonResponse({"error": "cannot_delete_status"}, status=400)
+
+        # Không hoàn kho ở bước xoá vì:
+        # - Nếu 'cho_xu_ly': kho đã bị trừ khi tạo đơn; bạn có thể muốn hoàn kho khi xoá,
+        #   nhưng nghiệp vụ chuẩn là chỉ hoàn khi 'hủy', đã xử lý ở nhánh PUT phía trên.
+        # - Nếu 'da_huy': đã có cờ restockedOnCancel đảm bảo chỉ hoàn 1 lần.
         donhang.delete_one({"_id": oid})
         return HttpResponse(status=204)
 
