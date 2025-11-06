@@ -21,6 +21,7 @@
     }
     html,body{height:100%}
     body{background:linear-gradient(180deg,#fff 0,#fff 40%, var(--bg-soft) 40%, var(--bg-soft) 100%);}
+
     .admin-shell{display:flex; min-height:100vh; width:100%;}
     .admin-sidebar{
       width:280px; background:linear-gradient(180deg,var(--brand) 0,var(--brand-2) 100%);
@@ -33,25 +34,31 @@
       width:100%; text-align:left; color:#eaffea; background:transparent; border:none;
       padding:10px 12px; border-radius:12px; margin-bottom:6px; font-weight:600;
       display:flex; align-items:center; gap:10px;
+      transition:background .18s ease, transform .18s ease;
     }
-    .admin-menu .btn:hover{background:rgba(255,255,255,.14)}
+    .admin-menu .btn:hover{background:rgba(255,255,255,.14); transform:translateX(2px)}
     .admin-menu .btn.active{background:#fff; color:var(--brand)}
+
     .admin-main{flex:1; min-width:0;}
     .admin-top{display:flex; align-items:center; justify-content:space-between; padding:20px 28px}
     .page-title{font-weight:800; font-size:32px; margin:0}
     .muted-pill{font-size:12px; color:#2e7d32; background:#e9f6eb; border-radius:999px; padding:6px 12px}
+
     .card{border:0; border-radius:var(--card-radius); box-shadow:var(--shadow-sm); background:#fff;}
     .card-hover{transition:transform .18s ease, box-shadow .18s ease}
     .card-hover:hover{transform:translateY(-2px); box-shadow:var(--shadow-lg)}
+
     .btn-soft{border-radius:12px; font-weight:600; border:1px solid rgba(0,0,0,.08); background:#fff;}
     .btn-soft:hover{background:#f3f6f4}
     .badge-soft{background:#eef7f0; color:#2e7d32}
     .footer-hint{color:#759f79; font-size:12px}
+
     @media (max-width: 991.98px){
       .admin-shell{flex-direction:column}
       .admin-sidebar{height:auto; width:100%; position:relative; border-bottom:1px solid rgba(255,255,255,.2)}
       .admin-top{padding:16px}
     }
+
     .card-compact .card-body{padding:14px 16px;}
     .card-compact h6,.card-compact h5{font-size:1rem; font-weight:700;}
     .card-compact p{margin-bottom:.5rem; font-size:.9rem;}
@@ -72,17 +79,27 @@
       <i class="bi bi-shield-lock-fill"></i>
       <span>Trang Quản Trị</span>
     </div>
+
     <div class="admin-menu">
       <a class="btn {% if request.resolver_match.url_name in 'admin_dashboard admin_dashboard2' %}active{% endif %}" href="{% url 'shop:admin_dashboard' %}">
         <i class="bi bi-speedometer2"></i><span>Bảng điều khiển</span>
       </a>
-      <a class="btn" href="{% url 'shop:admin_products' %}"><i class="bi bi-basket3"></i><span>Sản phẩm</span></a>
-      <a class="btn" href="{% url 'shop:admin_categories' %}"><i class="bi bi-columns-gap"></i><span>Danh mục</span></a>
-      <a class="btn" href="{% url 'shop:admin_orders' %}"><i class="bi bi-receipt"></i><span>Đơn hàng</span></a>
-      <a class="btn" href="{% url 'shop:admin_accounts' %}"><i class="bi bi-people"></i><span>Tài khoản</span></a>
+      <a class="btn {% if request.resolver_match.url_name == 'admin_products' %}active{% endif %}" href="{% url 'shop:admin_products' %}">
+        <i class="bi bi-basket3"></i><span>Sản phẩm</span>
+      </a>
+      <a class="btn {% if request.resolver_match.url_name == 'admin_categories' %}active{% endif %}" href="{% url 'shop:admin_categories' %}">
+        <i class="bi bi-columns-gap"></i><span>Danh mục</span>
+      </a>
+      <a class="btn {% if request.resolver_match.url_name == 'admin_orders' %}active{% endif %}" href="{% url 'shop:admin_orders' %}">
+        <i class="bi bi-receipt"></i><span>Đơn hàng</span>
+      </a>
+      <a class="btn {% if request.resolver_match.url_name == 'admin_accounts' %}active{% endif %}" href="{% url 'shop:admin_accounts' %}">
+        <i class="bi bi-people"></i><span>Tài khoản</span>
+      </a>
       <hr class="border-light my-3">
       <a class="btn" href="{% url 'shop:home' %}"><i class="bi bi-house"></i><span>Về trang khách</span></a>
     </div>
+
     {% block sidebar_extra %}{% endblock %}
   </aside>
 
@@ -114,6 +131,17 @@ box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;transform:translateY(-10px);trans
 
 <div class="toast-container" id="toastBox" aria-live="polite" aria-atomic="true"></div>
 
+<!-- 👇 Xuất Django messages ra JSON (để không chèn template tag vào JS) -->
+{% if messages %}
+<script id="dj-messages" type="application/json">
+[
+{% for m in messages %}
+  {"text":"{{ m|escapejs }}","type":"{% if 'error' in m.tags %}error{% else %}success{% endif %}"}{% if not forloop.last %},{% endif %}
+{% endfor %}
+]
+</script>
+{% endif %}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 (function(){
@@ -130,12 +158,17 @@ box-shadow:0 8px 24px rgba(0,0,0,.2);opacity:0;transform:translateY(-10px);trans
     setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),300);},timeout);
   }
   window.showToast=showToast;
-{% if messages %}
-    {% for m in messages %}
-      showToast("{{ m|escapejs }}", "{% if 'error' in m.tags %}error{% else %}success{% endif %}");
-    {% endfor %}
-  {% endif %}
 
+  // ✅ Đọc messages từ JSON script và hiển thị toast (không gây lỗi VS Code)
+  const msgEl = document.getElementById('dj-messages');
+  if (msgEl) {
+    try {
+      const arr = JSON.parse(msgEl.textContent);
+      arr.forEach(m => showToast(m.text, m.type));
+    } catch (e) {
+      console.error('JSON messages parse error:', e);
+    }
+  }
 })();
 </script>
 
