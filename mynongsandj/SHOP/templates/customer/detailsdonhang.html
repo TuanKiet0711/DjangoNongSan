@@ -144,4 +144,10 @@
   }
   loadOrder();
 </script>
+{% if paid_success %}
+<script>
+  alert("🎉 Thanh toán thành công! Đơn hàng đã được xác nhận.");
+</script>
+{% endif %}
+
 {% endblock %}
